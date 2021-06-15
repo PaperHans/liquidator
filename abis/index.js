@@ -1,5 +1,5 @@
-const kyber = require('./kyber.json');
+const quickswap = require('./quickswap.json');
 
 module.exports = {
-  kyber
+  quickswap
 };
