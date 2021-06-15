@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../erc20-truffle-mocha"
+		},
+		{
+			"path": "../specialist-reviews"
+		},
+		{
+			"path": "../profitable-flashloans"
+		},
+		{
+			"path": "."
+		}
+	]
+}
