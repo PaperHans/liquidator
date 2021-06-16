@@ -5,21 +5,25 @@ const { mainnet: addresses } = require("./addresses");
 const { v1, v2 } = require('@aave/protocol-js');
 const BigNumber = require('bignumber.js');
 
-
 const web3 = new Web3(new Web3(process.env.POLY_URL1));
-// const web3 = new Web3(
-//     new Web3.providers.WebsocketProvider(process.env.POLY_URL1)
-//   );
+
 const { JsonRpcProvider } = require("@ethersproject/providers");
 const provider = new JsonRpcProvider("https://rpc-mainnet.matic.quiknode.pro",137);
 //console.log("Provider", provider);
 
-//const networkId = await web3.eth.net.getId();
-//console.log(ChainIdSushi.MATIC);
+const aaveLendingPool = new web3.eth.Contract(
+    abis.aaveLendingPool.aaveLendingPoolProxy,
+    addresses.aave.aaveLendingPoolProxy
+);
 
-const aave = new web3.eth.Contract(
-    abis.quickswap.quickswapNetworkProxy,
-    addresses.quickswap.quickswapNetworkProxy
+const aaveDataProvider = new web3.eth.Contract(
+  abis.aaveDataProvider.aaveDataProviderProxy,
+  addresses.aave.aaveDataProviderProxy
+);
+
+const aavePriceOracle = new web3.eth.Contract(
+  abis.aavePriceOracle.aavePriceOracleProxy,
+  addresses.aave.aavePriceOracleProxy
 );
 
 const init = async () => {
@@ -33,50 +37,115 @@ const init = async () => {
   web3.eth.subscribe("newBlockHeaders").on("data", async (block) => {
     console.log(`New POLY block received. Block # ${block.number}`);
 
-    const pastDeposits = await Promise.all([
+    const pastBorrows = await Promise.all([
         // aave.getPastEvents('Deposit', {
         //     fromBlock: block.number-1,
         //     toBlock: block.number
         //  }, function (error, events) { return events }),
-        aave.getPastEvents('Borrow', {
+        aaveLendingPool.getPastEvents('Borrow', {
             fromBlock: block.number-1,
             toBlock: block.number
          }, function (error, events) { return events }), 
       ]);
-      let datay;
-    //   let userData;
+
+    let borrowEvents;
     let userData;  
     let healthy;
     let ethPosition;
-      try {
-        datay = pastDeposits[0];
-        const datay2 = datay.filter(x => x.returnValues.reserve == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6" || x.returnValues.reserve == "0xD6DF932A45C0f255f85145f286eA0b292B21C90B" || x.returnValues.reserve == "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063" || x.returnValues.reserve == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174" || x.returnValues.reserve == "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619")
-        var i;
-        for (i = 0; i < datay2.length; i++) { 
-            var usah = datay2[i].returnValues.user;
-            var resahv = datay2[i].returnValues.reserve;
-            console.log("User "+i+" Address: ",usah);
-            console.log("User "+i+" Reserve: ",resahv);
-            userData = (await aave.methods.getUserAccountData(usah).call())
-            healthy = userData.healthFactor
-            ethPosition = userData.totalCollateralETH
-            //console.log("health factor: ", BigNumber(healthy).dividedBy(1e18).toFixed(2));
-            if(healthy === '115792089237316195423570985008687907853269984665640564039457584007913129639935') {
-                console.log('NIL (No Collateral)');
-            } else {
-                console.log("health factor: ", BigNumber(healthy).dividedBy(1e18).toFixed(2));
-            } //0x55a10618c7E9489ceE047705cD003df6d9e09195 1.05 with 24k eth
-            if(ethPosition === '0') {
-                console.log('Liquidated');
-            } else {
-                console.log("ETH Position: ", BigNumber(ethPosition).dividedBy(1e18).toFixed(2));
-            } //0x55a10618c7E9489ceE047705cD003df6d9e09195 1.05 with 24k eth
+    let healthyFormatted;
+    let ethPositionFormatted;
+    let userDaiData;
+    let userUsdcData;
+    let userWethData;
+    let userWbtcData;
+    let userAaveData;
+
+    // userDaiData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.dai.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
+    // userUsdcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.usdc.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
+    // userWethData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.weth.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
+    // userWbtcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.wbtc.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
+    // userAaveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.aave.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
+
+    // console.log("DAI: ",userDaiData);
+    // console.log("USDC: ",userUsdcData);
+    // console.log("wETH: ",userWethData);
+    // console.log("wBTC: ",userWbtcData);
+    // console.log("AAVE: ",userAaveData);
+
+    try {
+      borrowEvents = pastBorrows[0];
+      const borrowEventsFiltered = borrowEvents.filter( x => 
+        x.returnValues.reserve == addresses.reserves.dai.address || 
+        x.returnValues.reserve == addresses.reserves.usdc.address || 
+        x.returnValues.reserve == addresses.reserves.weth.address || 
+        x.returnValues.reserve == addresses.reserves.wbtc.address || 
+        x.returnValues.reserve == addresses.reserves.aave.address 
+        )
+      // console.log("Borrow Events: ",borrowEventsFiltered);
+
+      var i;
+      for (i = 0; i < borrowEventsFiltered.length; i++) { 
+        // we can get user or onBehalfOf, but onBehalfOf is the address that will be receiving the debt
+        var userAddress = borrowEventsFiltered[i].returnValues.onBehalfOf;
+        var reserveAddress = borrowEventsFiltered[i].returnValues.reserve;
+        console.log("User "+i+" Address: ",userAddress);
+        console.log("User "+i+" Reserve: ",reserveAddress);
+
+        // getUserAccountData to get the healthFactor and ETH Position
+        userData = (await aaveLendingPool.methods.getUserAccountData(userAddress).call())
+        healthy = userData.healthFactor
+        ethPosition = userData.totalCollateralETH
+
+        // if they have no collateral, print
+        if(healthy === '115792089237316195423570985008687907853269984665640564039457584007913129639935') {
+          healthyFormatted = null;
+        } 
+        // else get the printable healthFactor value
+        else {
+          healthyFormatted = BigNumber(healthy).dividedBy(1e18).toFixed(2);
         }
 
-      } catch {
-        datay = null
-        console.log("User Address: ",datay);
+        // if they have no ETH postion, print
+        if(ethPosition === '0') {
+          ethPositionFormatted = 0;
+        } 
+        // else get the printable ETH position
+        else {
+          ethPositionFormatted = BigNumber(ethPosition).dividedBy(1e18).toFixed(2);
+        } 
+
+        console.log("User "+i+" HealthFactor: ",healthyFormatted);
+        console.log("User "+i+" ethPostion: ",ethPositionFormatted);
+
+        userDaiData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.dai.address,userAddress).call())
+        userUsdcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.usdc.address,userAddress).call())
+        userWethData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.weth.address,userAddress).call())
+        userWbtcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.wbtc.address,userAddress).call())
+        userAaveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.aave.address,userAddress).call())
+
+        console.log("DAI: ",userDaiData);
+        console.log("USDC: ",userUsdcData);
+        console.log("wETH: ",userWethData);
+        console.log("wBTC: ",userWbtcData);
+        console.log("AAVE: ",userAaveData);
+        // if they have no ETH postion, print
+        // if(ethPositionFormatted >= 1 && healthyFormatted < 1) {
+        //   userReserveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.dai.address,userAddress).call())
+        //   userReserveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.usdc.address,userAddress).call())
+        //   userReserveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.weth.address,userAddress).call())
+        //   userETHData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.aave.wbtc,userAddress).call())
+        //   userDaiData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.aave.address,userAddress).call())
+        // } 
+        // // else get the printable ETH position
+        // else {
+        //   ethPositionFormatted = BigNumber(ethPosition).dividedBy(1e18).toFixed(2);
+        // } 
       }
+
+    } catch {
+      borrowEvents = null
+      console.log("Error with borrow events try statement: ",borrowEventsFiltered);
+    }
       
   });
 };
