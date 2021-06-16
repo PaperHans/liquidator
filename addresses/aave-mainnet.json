@@ -1,0 +1,5 @@
+{
+    "aaveLendingPoolProxy": "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf",
+    "aaveDataProviderProxy": "0x7551b5D2763519d4e37e8B81929D336De671d46d",
+    "aavePriceOracleProxy": "0x0229F777B0fAb107F9591a41d5F02E4e98dB6f2d"
+}
