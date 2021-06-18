@@ -2,8 +2,9 @@ require("dotenv").config();
 const Web3 = require("web3");
 const abis = require("./abis");
 const { mainnet: addresses } = require("./addresses");
-const { v1, v2 } = require('@aave/protocol-js');
+//const { v1, v2 } = require('@aave/protocol-js');
 const BigNumber = require('bignumber.js');
+const _ = require("lodash");
 
 const web3 = new Web3(new Web3(process.env.POLY_URL1));
 
@@ -60,7 +61,7 @@ const init = async () => {
     let userWbtcData;
     let userAaveData;
 
-    // userDaiData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.dai.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
+    // userDaiData = (await aaveDataProvider.getReservesData("0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6","0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
     // userUsdcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.usdc.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
     // userWethData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.weth.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
     // userWbtcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.wbtc.address,"0x55a10618c7E9489ceE047705cD003df6d9e09195").call())
@@ -123,11 +124,32 @@ const init = async () => {
         userWbtcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.wbtc.address,userAddress).call())
         userAaveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.aave.address,userAddress).call())
 
-        console.log("DAI: ",userDaiData);
-        console.log("USDC: ",userUsdcData);
-        console.log("wETH: ",userWethData);
-        console.log("wBTC: ",userWbtcData);
-        console.log("AAVE: ",userAaveData);
+        // console.log("DAI: ",userDaiData);
+        // console.log("USDC: ",userUsdcData);
+        // console.log("wETH: ",userWethData);
+        // console.log("wBTC: ",userWbtcData);
+        // console.log("AAVE: ",userAaveData);
+        
+        const tableData = [
+          ["userAddress", "reserveAddress", "currentATokenBalance", "usageAsCollateral?", "Bonus", "debtToCover", "debtReadable"],
+          [userAddress, addresses.reserves.dai.address, userDaiData.currentATokenBalance, userDaiData.usageAsCollateralEnabled, addresses.reserves.dai.reward, userDaiData.currentATokenBalance*addresses.reserves.dai.reward, BigNumber(userDaiData.currentATokenBalance).dividedBy(1e18)*0.5],
+          [userAddress, addresses.reserves.usdc.address, userUsdcData.currentATokenBalance, userUsdcData.usageAsCollateralEnabled, addresses.reserves.usdc.reward, userUsdcData.currentATokenBalance*addresses.reserves.usdc.reward, BigNumber(userUsdcData.currentATokenBalance).dividedBy(1e6)*0.5],
+          [userAddress, addresses.reserves.weth.address, userWethData.currentATokenBalance, userWethData.usageAsCollateralEnabled, addresses.reserves.weth.reward, userWethData.currentATokenBalance*addresses.reserves.weth.reward, BigNumber(userWethData.currentATokenBalance).dividedBy(1e18)*0.5],
+          [userAddress, addresses.reserves.wbtc.address, userWbtcData.currentATokenBalance, userWbtcData.usageAsCollateralEnabled, addresses.reserves.wbtc.reward, userWbtcData.currentATokenBalance*addresses.reserves.wbtc.reward, BigNumber(userWbtcData.currentATokenBalance).dividedBy(1e18)*0.5],
+          [userAddress, addresses.reserves.aave.address, userAaveData.currentATokenBalance, userAaveData.usageAsCollateralEnabled, addresses.reserves.aave.reward, userAaveData.currentATokenBalance*addresses.reserves.aave.reward, BigNumber(userAaveData.currentATokenBalance).dividedBy(1e18)*0.5]
+        ];
+
+        const keys = tableData.shift();
+
+        const formatted = tableData.reduce((agg, arr) => {
+          agg.push(arr.reduce((obj, item, index) => {
+            obj[keys[index]] = item;
+            return obj;
+          }, {}));
+          return agg;
+        }, [])
+
+        console.log(formatted);
         // if they have no ETH postion, print
         // if(ethPositionFormatted >= 1 && healthyFormatted < 1) {
         //   userReserveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.dai.address,userAddress).call())
