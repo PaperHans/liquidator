@@ -1,6 +1,6 @@
 const aaveMainnet = require("./aave-mainnet.json");
 const reservesMainnet = require("./reserves-mainnet.json");
-const chainPrices = require("./chain-addresses.json");
+const chainPrices = require("./chainlinkAddresses");
 
 module.exports = {
   mainnet: {

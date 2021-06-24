@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",
@@ -12,15 +12,9 @@
     "@aave/protocol-js": "^2.7.2",
     "@aave/protocol-v2": "^1.0.1",
     "@openzeppelin/contract-loader": "^0.6.2",
-    "@pancakeswap/sdk": "^2.3.1",
-    "@studydefi/money-legos": "^2.4.2",
-    "@sushiswap/sdk": "*",
-    "@truffle/hdwallet-provider": "^1.3.0",
-    "@uniswap/sdk": "^2.0.5",
     "bignumber.js": "^9.0.1",
     "dotenv": "^9.0.0",
-    "i": "^0.3.6",
-    "npm": "^7.13.0",
+    "esm": "^3.2.25",
     "quickswap-sdk": "^3.0.8",
     "web3": "^1.3.5"
   }
