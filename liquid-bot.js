@@ -127,6 +127,14 @@ const init = async () => {
           userWethData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.weth.address,userAddress).call())
           userWbtcData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.wbtc.address,userAddress).call())
           userAaveData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.aave.address,userAddress).call())
+          userMaticData = (await aaveDataProvider.methods.getUserReserveData(addresses.reserves.matic.address,userAddress).call())
+
+          userDaiData = (await aaveDataProvider.methods.getReserveData(addresses.reserves.dai.address).call())
+          userUsdcData = (await aaveDataProvider.methods.getReserveData(addresses.reserves.usdc.address).call())
+          userWethData = (await aaveDataProvider.methods.getReserveData(addresses.reserves.weth.address).call())
+          userWbtcData = (await aaveDataProvider.methods.getReserveData(addresses.reserves.wbtc.address).call())
+          userAaveData = (await aaveDataProvider.methods.getReserveData(addresses.reserves.aave.address).call())
+          userMaticData = (await aaveDataProvider.methods.getReserveData(addresses.reserves.matic.address).call())
 
           const [daiInEth, usdcInEth, wethInEth, wbtcInEth, aaveInEth] = (await aavePriceOracle.methods.getAssetsPrices([addresses.reserves.dai.address, addresses.reserves.usdc.address, addresses.reserves.weth.address, addresses.reserves.wbtc.address, addresses.reserves.aave.address]).call())
 

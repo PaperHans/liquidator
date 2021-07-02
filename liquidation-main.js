@@ -27,6 +27,11 @@ const aaveDataProvider = new web3.eth.Contract(
     addresses.aave.aavePriceOracleProxy
   );
 
+  const contractSelf = new web3.eth.Contract(
+    abis.contractAbi.contractAbi,
+    addresses.aave.contractProxy
+  );
+
 
 //Begin Script
 
