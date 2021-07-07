@@ -4,6 +4,5 @@
     "aavePriceOracleProxy": "0x0229F777B0fAb107F9591a41d5F02E4e98dB6f2d",
     "contractProxy2": "0x2c31348D0782Cebc70eC5A858d9A56986a20338f",
     "contractProxy": "0x85Ddada2E76Db3B0A89073743422B220584c35D4",
-    "contractReserve": "0x93DD06C6baa25907cB148375CD81EafD41Acb358",
     "chainAddress": "0x1A56342761f8fec1f9D5B994D05F1813b3621454"
 }
