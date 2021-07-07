@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "scripts": {
+    "reserves": "node index.js contractReserves"
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
