@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "listen": "node index.js aaveListener",
     "reserves": "node index.js contractReserves"
   },
   "author": "",
