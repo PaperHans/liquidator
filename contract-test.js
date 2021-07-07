@@ -12,28 +12,6 @@ const csv = require('csv-parse');
 
 // fs.createReadStream('./WBTC-holders.csv').pipe(parser);
 
-const path = './WBTC-holders.csv';
-const results = [];
-let userArr;
-
-fs.createReadStream(path)
-  .pipe(csv())
-  .on('data', (data) => {
-      results.push(data[0]);
-  })
-  .on('end', async () => {
-    console.log('done');
-    userArr = results.splice(1,150)
-    console.log(userArr.length);
-    const t1 = Date.now();
-    const listUsers = userArr;
-    const listTokens = "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf";
-    userData = (await contractSelf.methods.healthFactors(listUsers,listTokens).call())
-    console.log("UserData: ",userData);
-    const t2 = Date.now();
-    console.log(t2-t1);
-  });
-
 //Instantiate Web3 Connection
 const web3 = new Web3(new Web3(process.env.POLY_URL3));
 
@@ -49,6 +27,28 @@ const aaveLendingPool = new web3.eth.Contract(
     abis.aaveLendingPool.aaveLendingPoolProxy,
     addresses.aave.aaveLendingPoolProxy
 );
+
+const path = './WBTC-holders.csv';
+const results = [];
+let userArr;
+
+fs.createReadStream(path)
+  .pipe(csv())
+  .on('data', (data) => {
+      results.push(data[0]);
+  })
+  .on('end', async () => {
+    console.log('done');
+    userArr = results.splice(1,10)
+    console.log(userArr.length);
+    const t1 = Date.now();
+    const listUsers = userArr;
+    const listTokens = "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf";
+    userData = (await contractSelf.methods.healthFactors(listUsers,listTokens).call())
+    console.log("UserData: ",userData);
+    const t2 = Date.now();
+    console.log(t2-t1);
+  });
 
 //Begin Script
 
