@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "listen": "node index.js aaveListener",
-    "reserves": "node index.js contractReserves"
+    "reserves": "node index.js contractReserves",
+    "loop": "node index.js largeLooper"
   },
   "author": "",
   "license": "ISC",
