@@ -2,6 +2,7 @@
 import Web3 from 'web3';
 import { ethers } from 'ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
+import _ from 'lodash';
 // import { ENGINE_METHOD_CIPHERS } from 'constants';
 // local imports
 // import { closeWeb3, getContract } from './utils/web3Utils';
@@ -25,7 +26,7 @@ const provider = new JsonRpcProvider(
 
 
 const getEventsFromAbi = () => {
-  const events = aaveLendingPoolAbi.filter(obj => obj.type ? obj.type === "event" : false);
+  const events = aaveLendingPoolAbi.filter(obj => obj.type === "event");
   return events;
 };
 
@@ -77,6 +78,7 @@ const getIndexedAndUnindexedInputs = (eventTopics, eventsOfInterest) => {
   }
 
   for (var i = 0; i < eventsOfInterest.length; i += 1) {
+
     eventsOfInterest[i].inputs.forEach((input) => {
       input.indexed
         ? indexedInputs[eventTopics[i]].push(input)
@@ -100,6 +102,7 @@ const getDecodedLogs = (logs, indexedInputs, unindexedInputs) => {
   const decoder = new ethers.utils.AbiCoder();
   const decodedLogs = logs.map(log => {
     let decodedTopics = [];
+
     for (let item in indexedInputs) {
       if (item === log.topics[0]) {
         decodedTopics = indexedInputs[item].map(input => {
@@ -128,24 +131,96 @@ const getDecodedLogs = (logs, indexedInputs, unindexedInputs) => {
   return decodedLogs;
 };
 
+const getEventsOfInterestNew = abi => {
+  const eventTypesofInterest = ['Borrow', 'Deposit', 'Withdraw', 'Repay'];
+  const eventsOfInterest = abi.filter(obj => {
+    return obj.type === 'event' && eventTypesofInterest.includes(obj.name);
+  });
+  return eventsOfInterest;
+};
+
+const decodeSingleArrayOfLogs = (_decoder, log, _topic, _indexedInputs, _unindexedInputs) => {
+  let decodedTopics = [];
+  let decodedData = [];
+  if (log.topics.includes(_topic)) {
+    decodedTopics = _indexedInputs.map(input => {
+      const value = _decoder.decode(
+        [input.type],
+        log.topics[_indexedInputs.indexOf(input) + 1]
+      );
+      return `${input.name}: ${value}`;
+    });
+    const decodedDataRaw = _decoder.decode(_unindexedInputs, log.data);
+
+    decodedData = _unindexedInputs.map((input, i) => {
+      return `${input.name}: ${decodedDataRaw[i]}`;
+    });
+  }
+  return decodedTopics.concat(decodedData);
+};
+
+const combine = async (_outputObj, _eventsOfInterest, blockStart, blockEnd) => {
+  if (!blockStart || typeof blockStart !== typeof 10) throw new Error('Add block start.  blockStart: ', blockStart);
+  if (!blockEnd || typeof blockEnd !== typeof 10) throw new Error('Add block end.  blockEnd:', blockEnd);
+  const decoder = new ethers.utils.AbiCoder();
+  for (let eventObj of _eventsOfInterest) {
+    const { inputs: eventInputs } = eventObj;
+    const inputTypes = eventInputs.map(({ type }) => type);
+    const eventSig = `${eventObj.name}(${inputTypes.toString()})`;
+    const topic = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(eventSig));
+    const indexedInputs = eventInputs.filter(({ indexed }) => indexed);
+    const unindexedInputs = eventInputs.filter(({ indexed }) => !indexed);
+    const logs = await provider.getLogs({
+      fromBlock: blockStart,
+      toBlock: blockEnd,
+      address: aaveLendingPoolAddress,
+      topics: [topic],
+    });
+    
+    const decodedLogs = logs.map(log => decodeSingleArrayOfLogs(decoder, log, topic, indexedInputs, unindexedInputs));
+    _outputObj[eventObj.name] = {
+      types: inputTypes,
+      eventSig,
+      topic,
+      indexedInputs,
+      unindexedInputs,
+      logs,
+      decodedLogs,
+    };
+  }
+};
+
+const getLogsNew = async (_outputObj, blockStart, blockEnd) => {
+  const eventTopicsArr = [];
+  for (const name of Object.keys(_outputObj)) {
+    const eventTopic = _outputObj[name].topic;
+    eventTopicsArr.push(eventTopic)
+  }
+  const logs = await provider.getLogs({
+    fromBlock: blockStart,
+    toBlock: blockEnd,
+    address: aaveLendingPoolAddress,
+    topics: [eventTopicsArr],
+  });
+  return logs;
+};
+
 const testBlockStart = 16030770;
 const testBlockEnd = 16030777;
 
 const main = async () => {
-  // Load the main aave smart contract
-  // const aaveLendingPool = await getContract(web3, aaveLendingPoolAbi, aaveLendingPoolAddress);
+  const outputObj = {};
+  
+  const eventsOfInterestArr = getEventsOfInterestNew(aaveLendingPoolAbi);
 
-  const eventsArr = getEventsFromAbi();
-  const eventsOfInterestArr = getEventsOfInterest(eventsArr);
-  const eventTypesArr = getEventTypes(eventsOfInterestArr);
-  const eventSigsArr = getEventSigs(eventTypesArr, eventsOfInterestArr);
-  const eventTopicsArr = getEventTopics(eventSigsArr);
-  const { indexedInputs, unindexedInputs } = getIndexedAndUnindexedInputs(eventTopicsArr, eventsOfInterestArr);
-  const logsArr = await getLogs(testBlockStart, testBlockEnd, eventTopicsArr);
-  const decodedLogsArr = getDecodedLogs(logsArr, indexedInputs, unindexedInputs);
-  console.log('decodedLogsArrdecodedLogsArr')
-  decodedLogsArr.forEach(element => {
-    console.log(element)
+  await combine(outputObj, eventsOfInterestArr, testBlockStart, testBlockEnd);
+
+  console.log('displaying output');
+  Object.keys(outputObj).forEach(name => {
+    console.log(`\n Showing ${name} events: `)
+    outputObj[name].decodedLogs.forEach(dLog => {
+      console.log('Event:', dLog)
+    });
   });
 };
 
