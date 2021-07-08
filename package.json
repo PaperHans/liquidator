@@ -6,7 +6,8 @@
   "scripts": {
     "listen": "node index.js aaveListener",
     "reserves": "node index.js contractReserves",
-    "loop": "node index.js largeLooper"
+    "loop": "node index.js largeLooper",
+    "analyze-events": "node index.js eventAnalyzer"
   },
   "author": "",
   "license": "ISC",
