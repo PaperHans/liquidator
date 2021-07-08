@@ -11,7 +11,7 @@ export { default as aavePriceOracle } from './aave-price-oracle.json';
 const exportObj = {};
 require('fs').readdirSync(__dirname).forEach(file => {
   // dont add the 'index.js' file in with the mix
-  if (file !== 'index.js') {
+  if (file.includes('.json')) {
     const parentObj = require(`./${file}`);
     const { abi: preAbi, address } = parentObj;
     if (preAbi && address) {
