@@ -5,7 +5,7 @@
 
 // modules
 import Web3 from 'web3';
-import _ from 'lodash';
+import _, { toNumber } from 'lodash';
 // local
 import db from './db';
 import { getContract } from './utils/web3Utils'
@@ -37,7 +37,7 @@ const getHealthFactorForAccounts = async (_contract, batchOfAccounts, _token) =>
 };
 
 const mapHealthFactorToAccounts = (hfArr, _batchOfAccounts) => {
-  const _acctHealthFactorArr = hfArr.map((hf, idx) => ({ address: _batchOfAccounts[idx], healthFactor: hf }));
+  const _acctHealthFactorArr = hfArr.map((hf, idx) => ({ address: _batchOfAccounts[idx], healthFactor: toNumber(hf) }));
   return _acctHealthFactorArr;
 };
 
@@ -52,7 +52,7 @@ const getAcctsToLiquidateOrRemove = _acctHealthFactorArr => {
     // mark for removal
     if (scaledHealthFactor > 5) accountsToRemove.push(acctObj);
     // mark for liquidation
-    if (scaledHealthFactor < 1) accountsToLiquidate.push(acctObj);
+    if (scaledHealthFactor > 0 && scaledHealthFactor < 1) accountsToLiquidate.push(acctObj);
   }
   return { accountsToRemove, accountsToLiquidate };
 };

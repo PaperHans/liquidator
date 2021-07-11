@@ -17,7 +17,6 @@ const web3 = new Web3(new Web3(POLY_URL1));
 
 // fxns
 const handleEventUpdate = async (newEvent, contractKey) => {
-  console.log('handling update')
   // send to database
   const {
     address,
@@ -44,6 +43,7 @@ const handleEventUpdate = async (newEvent, contractKey) => {
   
   try {
     const res = await db.query(query, dbPayload);
+    console.log('added to db', res)
   } catch (err) {
     console.log(err);
   }
