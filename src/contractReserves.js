@@ -11,7 +11,7 @@ import { getContract, closeWeb3 } from './utils/web3Utils'
 // import { address as reserveContractAddress, abi as reserveContractAbi } from './abis/custom/reserveGetter';
 import { address as reserveDebtContractAddress, abi as reserveDebtContractAbi } from './abis/custom/reserveDebtGetter';
 import { address as chainPricesContractAddress, abi as chainPricesContractAbi } from './abis/custom/chainAbiPrices';
-import { rewards } from './constants/reservesMainnet';
+import { tokenInfo } from './constants/reservesMainnet';
 // constants
 
 const chainLinkPriceAddresses = [
@@ -79,8 +79,8 @@ export const getReservesForAccounts = async usersArr => {
         collateralInEth,
         debtReal,
         debtInEth,
-        address: rewards[tokenName].address,
-        reward: rewards[tokenName].reward,
+        address: tokenInfo[tokenName].address,
+        reward: tokenInfo[tokenName].reward,
       };
     }
     console.log("userObjuserObjuserObj", userObj);

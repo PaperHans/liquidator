@@ -1,8 +1,6 @@
 // modules
-import Web3 from 'web3';
 import { ethers } from 'ethers';
 import { JsonRpcProvider } from '@ethersproject/providers';
-import _ from 'lodash';
 // local imports
 import { address as aaveLendingPoolAddress, abi as aaveLendingPoolAbi } from './abis/aave/general/aaveLendingPool';
 // constants

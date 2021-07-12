@@ -7,7 +7,9 @@
     "listen": "node index.js aaveListener",
     "reserves": "node index.js contractReserves",
     "loop": "node index.js largeLooper",
-    "analyze-events": "node index.js eventAnalyzer"
+    "analyze-events": "node index.js eventAnalyzer",
+    "liquidate": "node index.js liquidBot",
+    "l": "node index.js liquid-bot"
   },
   "author": "",
   "license": "ISC",
