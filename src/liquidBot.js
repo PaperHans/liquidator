@@ -1,7 +1,6 @@
 // modules
 import Web3 from 'web3';
 import BigNumber from 'bignumber.js';
-import _ from 'lodash';
 // local imports
 import {
   abi as aaveLendingPoolAbi,

@@ -8,8 +8,8 @@
     "reserves": "node index.js contractReserves",
     "loop": "node index.js largeLooper",
     "analyze-events": "node index.js eventAnalyzer",
-    "liquidate": "node index.js liquidBot",
-    "l": "node index.js liquid-bot"
+    "liquidate-historical": "node index.js liquidBot",
+    "liquidate-rt": "node index.js liquidationMain"
   },
   "author": "",
   "license": "ISC",
