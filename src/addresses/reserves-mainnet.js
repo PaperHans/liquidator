@@ -23,4 +23,8 @@ export const reserves = {
     address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     reward: 0.1,
   },
+  usdt: {
+    address: "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+    reward: 0,
+  },
 };
