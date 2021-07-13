@@ -5,17 +5,17 @@ import BigNumber from 'bignumber.js';
 import {
   abi as aaveLendingPoolAbi,
   address as aaveLendingPoolAddress,
-} from './abis/aave/general/aaveLendingPool';
+} from '../abis/aave/general/aaveLendingPool';
 import {
   abi as aaveDataProviderAbi,
   address as aaveDataProviderAddress,
-} from './abis/aave/general/aaveDataProvider';
+} from '../abis/aave/general/aaveDataProvider';
 import {
   abi as aavePriceOracleAbi,
   address as aavePriceOracleAddress,
-} from './abis/aave/general/aavePriceOracle';
+} from '../abis/aave/general/aavePriceOracle';
 import { tokenInfo } from './constants/reservesMainnet';
-import { getContract } from './utils/web3Utils';
+import { getContract } from '../utils/web3Utils';
 // constants
 const { POLY_URL1 } = process.env;
 const web3 = new Web3(new Web3(POLY_URL1));
@@ -73,7 +73,7 @@ const main = async () => {
           const userWethData = await aaveDataProvider.methods.getReserveData(tokenInfo.weth.address).call();
           const userWbtcData = await aaveDataProvider.methods.getReserveData(tokenInfo.wbtc.address).call();
           const userAaveData = await aaveDataProvider.methods.getReserveData(tokenInfo.aave.address).call();
-          const userMaticData = await aaveDataProvider.methods.getReserveData(tokenInfo.matic.address).call();
+          const userMaticData = await aaveDataProvider.methods.getReserveData(tokenInfo.wmatic.address).call();
 
           const [
             daiInEth,
@@ -88,7 +88,7 @@ const main = async () => {
             tokenInfo.weth.address,
             tokenInfo.wbtc.address,
             tokenInfo.aave.address,
-            tokenInfo.matic.address,
+            tokenInfo.wmatic.address,
           ]).call();
 
           // console.log("Price Oracle: ", daiInEth);
@@ -126,7 +126,7 @@ const main = async () => {
             getTokenTableData(userAddress, tokenInfo.weth, userWethData, wethInEth),
             getTokenTableData(userAddress, tokenInfo.wbtc, userWbtcData, wbtcInEth),
             getTokenTableData(userAddress, tokenInfo.aave, userAaveData, aaveInEth),
-            getTokenTableData(userAddress, tokenInfo.matic, userMaticData, maticInEth),
+            getTokenTableData(userAddress, tokenInfo.wmatic, userMaticData, maticInEth),
           ];
 
           const keys = tableData.shift();
