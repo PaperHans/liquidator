@@ -43,7 +43,7 @@ export const createTable = () => {
       dai BIGINT,
       usdt BIGINT,
       usdc BIGINT,
-      matic BIGINT,
+      wmatic BIGINT,
       weth BIGINT,
       wbtc BIGINT,
     );
@@ -54,7 +54,7 @@ export const createTable = () => {
       dai BIGINT,
       usdt BIGINT,
       usdc BIGINT,
-      matic BIGINT,
+      wmatic BIGINT,
       weth BIGINT,
       wbtc BIGINT,
       aave BIGINT

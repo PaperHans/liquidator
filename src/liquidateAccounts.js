@@ -27,6 +27,7 @@ const buildBatchOfAccounts = (acctsArr, batchSize, idx) => {
 };
 
 const getHealthFactorForAccounts = async (_contract, batchOfAccounts, _token) => {
+  // const _boa = batchOfAccounts.map(({ address, ...other }) => {return { accountAddress: address, ...other };} )
   try {
     const healthFactorArr = await _contract.methods.healthFactors(batchOfAccounts, _token).call();
     return healthFactorArr;
@@ -50,7 +51,7 @@ const getAcctsToLiquidateOrRemove = _acctHealthFactorArr => {
     const scaledHealthFactor = healthFactor / 1e18;
     acctObj.scaledHealthFactor = scaledHealthFactor;
     // mark for removal
-    if (scaledHealthFactor > 5) accountsToRemove.push(acctObj);
+    if (scaledHealthFactor > 2.5) accountsToRemove.push(acctObj);
     // mark for liquidation
     if (scaledHealthFactor > 0 && scaledHealthFactor < 1) accountsToLiquidate.push(acctObj);
   }
@@ -69,8 +70,49 @@ const removeAccounts = async (_accountsToRemove) => {
   }
 };
 
-const liquidateSingleAccount = async (accountObj) => {
-  const { collateralAddress, debtReserveAddress, userAddress, debtToCoverInWei, receiveATokens } = acctObj;
+/**
+ * the sorting hat
+ * @param {*} _accountsWithReserveData 
+ */
+const rankByEthAmt = _accountsWithReserveData => {
+  const newArr = _accountsWithReserveData.map(acctObj => {
+    const newAcctObj = {};
+    const objKeys = Object.keys(acctObj).filter(key => !['address', 'healthFactor', 'scaledHealthFactor'].includes(key));
+
+    // filter out any tokens that are not used for debt or collateral
+    for (let idx = 0; idx < objKeys.length; idx += 1) {
+      const tokenName = objKeys[idx];
+      // only add the token to the obj if it has > 0 eth in it
+      if (acctObj[tokenName].collateralInEth > 0.00001 || acctObj[tokenName].debtInEth > 0.00001) {
+        // newAcctObj[tokenName].tokens = acctObj[tokenName];
+        // newAcctObj[tokenName].tokenAddress = acctObj[tokenName].tokenAddress;
+        return acctObj;
+      }
+    }
+  });
+  // go thru each account, get the highest debt amt by token per acct, then compare the max debt per token per acct
+  newArr.sort((accountA, accountB) => {
+    // goal: get "a"s and "b"s highest amts first
+    // 1) get the token names in an array form
+    console.log(accountA)
+    const tokenKeysA = Object.keys(accountA).filter(key => !['address', 'healthFactor', 'scaledHealthFactor'].includes(key));
+    const tokenKeysB = Object.keys(accountB).filter(key => !['address', 'healthFactor', 'scaledHealthFactor'].includes(key));
+    // 2) create an array from these tokens
+    const tokenArrA = tokenKeysA.map(tokenName => accountA[tokenName].debtInEth);
+    const tokenArrB = tokenKeysB.map(tokenName => accountB[tokenName].debtInEth);
+    // 3) get the max
+    const maxA = Math.max(...tokenArrA)
+    const maxB = Math.max(...tokenArrB)
+    // 4) compare the maxes
+    return maxB - maxA;
+  })
+  newArr.forEach(element => {
+    console.log('sorted acct', element)
+  });
+};
+
+const liquidateSingleAccount = async (_accountObj) => {
+  const { collateralAddress, debtReserveAddress, userAddress, debtToCoverInWei, receiveATokens } = _accountObj;
   const healthFactorArr = await _contract.methods.healthFactors(batchOfAccounts, _token).call();
 };
 
@@ -85,6 +127,11 @@ const liquidateAccounts = async (_accountsToLiquidate) => {
    */
   // get reserves - reserve data needs to be in eth value as well as original a-token value
   const accountsWithReserveData = await getReservesForAccounts(_accountsToLiquidate);
+  // rank by largest liquidatable position
+  const sortedAccounts = rankByEthAmt(accountsWithReserveData);
+  // sortedAccounts.forEach(element => {
+    
+  // });
   // accountsWithReserveData.forEach(element => {
   //   console.log('accountsWithReserveData', element)
   // });
@@ -113,7 +160,7 @@ const loopThruAccounts = async (healthFactorContract, rows) => {
   let rowLen = rows.length;
   let batchCt = Math.floor(rowLen / batchSize) + 1;
   // loop thru batches of ~100 accts
-  for (let idx = 0; idx < batchCt; idx += 1) {
+  for (let idx = 32; idx < batchCt; idx += 1) {
     const batchOfAccounts = buildBatchOfAccounts(rows, batchSize, idx);
     const healthFactorArr = await getHealthFactorForAccounts(healthFactorContract, batchOfAccounts, token);
     const acctHealthFactorArr = mapHealthFactorToAccounts(healthFactorArr, batchOfAccounts);

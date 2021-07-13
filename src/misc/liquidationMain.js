@@ -1,9 +1,9 @@
 // modules
 import Web3 from 'web3';
 // local imports
-import abis from './abis';
-import { mainnet as addresses } from './addresses';
-import { getContract } from './utils/web3Utils';
+import abis from '../abis';
+import { mainnet as addresses } from '../addresses';
+import { getContract } from '../utils/web3Utils';
 // constants
 const { POLY_URL } = process.env;
 const web3 = new Web3(new Web3(POLY_URL));
