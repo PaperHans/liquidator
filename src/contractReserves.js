@@ -27,8 +27,7 @@ export const getReservesForAccounts = async usersArr => {
   const chainPricesContract = await getContract(web3, chainPricesContractAbi, chainPricesContractAddress);
 
   // get batch user reserve data from aave: [dai, usdc, weth, wbtc, aave, wmatic]
-  const userAddrArr = usersArr.map(userObj => userObj.address);
-
+  const userAddrArr = usersArr.map(userObj => userObj.address || userObj.accountAddress);
   const userReservesFlatArr = await contractSelf.methods.reservesData(userAddrArr, dataProviderContractAddress).call();
   
   // call for chainlink prices dai, usdc, 1, wbtc, aave, wmatic
@@ -37,6 +36,7 @@ export const getReservesForAccounts = async usersArr => {
 
   for (let idx = 0; idx < usersArr.length; idx += 1) {
     const userObj = usersArr[idx];
+    userObj.tokens = {};
 
     const userMappedIdx = idx * 14;
 
@@ -54,7 +54,7 @@ export const getReservesForAccounts = async usersArr => {
       const debt = toNumber(userReservesFlatArr[debtOrder]);
       const debtReal = debt / (10 ** aaveDecimals);
       const debtInEth = debtReal * (chainlinkPrice / (10 ** chainlinkDecimal));
-      userObj[tokenName] = {
+      userObj.tokens[tokenName] = {
         collateral,
         collateralReal,
         collateralInEth,

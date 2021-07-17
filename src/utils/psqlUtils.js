@@ -14,13 +14,13 @@ export const buildInsertQuery = (keysArr, tableName, payloadObj) => {
 };
 
 export const buildMultiDeleteQuery = (tableName, columnName, accountsToDelete) => {
-  const newAccountsToDelete = accountsToDelete.map(addr => `'${addr.address}'`);
+  const newAccountsToDelete = accountsToDelete.map(addr => `'${addr.address || addr.accountAddress}'`);
   const tupleOfMatches = newAccountsToDelete.join(',');
   const query = `DELETE FROM ${tableName} WHERE ${columnName} IN (${tupleOfMatches}) RETURNING ${columnName};`;
   return query
 };
 
-const loadValue = (val) => `(${val})`;
+const loadValue = (val) => `('${val}')`;
 
 export const multiInsertQuery = (keysArr, tableName, payloadArr) => {
   const valueStr = keysArr.map((_, idx) => `$${idx + 1}`).join(', ');
