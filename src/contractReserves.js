@@ -20,22 +20,33 @@ const web3 = new Web3(new Web3(process.env.POLY_URL1));
 
 // AaveProtocolDataProvider.sol contract (where getUserReserveData lies)
 const dataProviderContractAddress = '0x7551b5D2763519d4e37e8B81929D336De671d46d';
-export const getReservesForAccounts = async usersArr => {
+
+export const getChainLinkPrices = async () => {
+  const newTokenInfo = _.cloneDeep(tokenInfo);
+  const chainPricesContract = await getContract(web3, chainPricesContractAbi, chainPricesContractAddress);
+  // call for chainlink prices dai, usdc, 1, wbtc, aave, wmatic, usdt
+  const priceData = await chainPricesContract.methods.getLatestAll(priceAddressesArr).call();
+  tokenOrder.forEach((key, idx) => {newTokenInfo[key].price = toNumber(priceData[idx])});
+
+  return newTokenInfo;
+};
+
+export const getReservesForAccounts = async (_accountsToLiquidate, _tokenInfo) => {
   // aave contract to get batch user reserves
   // const contractSelf = await getContract(web3, reserveContractAbi, reserveContractAddress);
   const contractSelf = await getContract(web3, reserveDebtContractAbi, reserveDebtContractAddress);
-  const chainPricesContract = await getContract(web3, chainPricesContractAbi, chainPricesContractAddress);
+  // const chainPricesContract = await getContract(web3, chainPricesContractAbi, chainPricesContractAddress);
 
   // get batch user reserve data from aave: [dai, usdc, weth, wbtc, aave, wmatic]
-  const userAddrArr = usersArr.map(userObj => userObj.address || userObj.accountAddress);
+  const userAddrArr = _accountsToLiquidate.map(userObj => userObj.address || userObj.accountAddress);
   const userReservesFlatArr = await contractSelf.methods.reservesData(userAddrArr, dataProviderContractAddress).call();
   
   // call for chainlink prices dai, usdc, 1, wbtc, aave, wmatic
-  const priceData = await chainPricesContract.methods.getLatestAll(priceAddressesArr).call();
-  tokenOrder.forEach((key, idx) => {tokenInfo[key].price = toNumber(priceData[idx])});
+  // const priceData = await chainPricesContract.methods.getLatestAll(priceAddressesArr).call();
+  // tokenOrder.forEach((key, idx) => {tokenInfo[key].price = toNumber(priceData[idx])});
 
-  for (let idx = 0; idx < usersArr.length; idx += 1) {
-    const userObj = usersArr[idx];
+  for (let idx = 0; idx < _accountsToLiquidate.length; idx += 1) {
+    const userObj = _accountsToLiquidate[idx];
     userObj.tokens = {};
 
     const userMappedIdx = idx * 14;
@@ -45,27 +56,28 @@ export const getReservesForAccounts = async usersArr => {
       const tokenName = tokenOrder[j];
       const collateralOrder = userMappedIdx + j;
       const debtOrder = userMappedIdx + j + tokenOrder.length;
-      const chainlinkPrice = tokenName === 'weth' ? 1 : tokenInfo[tokenName].price;
-      const chainlinkDecimal = tokenName === 'weth' ? 0 : tokenInfo[tokenName].chainlinkDecimals;
-      const aaveDecimals = tokenInfo[tokenName].aaveDecimals;
+      const chainlinkDecimals = tokenName === 'weth' ? 0 : _tokenInfo[tokenName].chainlinkDecimals;
+      const chainlinkPriceEthPerToken = tokenName === 'weth' ? 1 : _tokenInfo[tokenName].price;
+      const chainlinkPriceEthPerTokenReal = chainlinkPriceEthPerToken / (10 ** chainlinkDecimals);
+      const aaveDecimals = _tokenInfo[tokenName].aaveDecimals;
       const collateral = toNumber(userReservesFlatArr[collateralOrder]);
       const collateralReal = collateral / (10 ** aaveDecimals);
-      const collateralInEth = collateralReal * (chainlinkPrice / (10 ** chainlinkDecimal));
+      const collateralInEth = collateralReal * chainlinkPriceEthPerTokenReal;
       const debt = toNumber(userReservesFlatArr[debtOrder]);
       const debtReal = debt / (10 ** aaveDecimals);
-      const debtInEth = debtReal * (chainlinkPrice / (10 ** chainlinkDecimal));
-      userObj.tokens[tokenName] = {
+      const debtInEth = debtReal * chainlinkPriceEthPerTokenReal;
+      _accountsToLiquidate[idx].tokens[tokenName] = {
         collateral,
         collateralReal,
         collateralInEth,
         debt,
         debtReal,
         debtInEth,
-        tokenAddress: tokenInfo[tokenName].tokenAddress,
-        reward: tokenInfo[tokenName].reward,
+        tokenAddress: _tokenInfo[tokenName].tokenAddress,
+        reward: _tokenInfo[tokenName].reward,
       };
     }
   }
-  return usersArr;
+  return _accountsToLiquidate;
 };
 
