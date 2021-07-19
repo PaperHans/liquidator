@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "listen": "node index.js aaveListener",
+    "listen": "node index.js chainlinkPriceListener",
     "reserves": "node index.js contractReserves",
-    "loop": "node index.js liquidateAccounts",
+    "singleLoop": "node index.js liquidateAccounts",
+    "loop": "python3 src/looper.py",
     "analyze-events": "node index.js eventAnalyzer"
   },
   "author": "",
@@ -15,6 +16,7 @@
     "@aave/protocol-js": "^2.7.2",
     "@aave/protocol-v2": "^1.0.1",
     "@openzeppelin/contract-loader": "^0.6.2",
+    "@truffle/hdwallet-provider": "^1.4.1",
     "bignumber.js": "^9.0.1",
     "csv-parse": "^4.16.0",
     "dotenv": "^9.0.0",
