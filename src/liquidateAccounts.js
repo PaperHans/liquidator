@@ -5,7 +5,8 @@
 
 // modules
 import Web3 from 'web3';
-import _, { toNumber } from 'lodash';
+import _, { toNumber, shuffle } from 'lodash';
+import HDWalletProvider from '@truffle/hdwallet-provider';
 // local
 import db from './db';
 import { getContract } from './utils/web3Utils'
@@ -18,12 +19,17 @@ import {
   abi     as flashAndLiquidateAbi,
 } from './abis/custom/flashAndLiquidate';
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
-import { getReservesForAccounts } from './contractReserves';
-
-const mnemonic = '';
-// const x = Web3.hdw
-// const provider = new HDWalletProvider(mnemonic,'http://localhost:8545');
-
+import { getReservesForAccounts, getChainLinkPrices } from './contractReserves';
+// constants
+const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3, TABLE_ACCOUNTS } = process.env;
+let provider = new HDWalletProvider({
+  mnemonic: { phrase: WEB3_MNEMONIC },
+  providerOrUrl: POLY_URL3,
+});
+const setUpWeb3 = () => new Web3(provider);
+const setUpBasicWeb3 = () => new Web3(new Web3(POLY_URL2));
+let web3HealthFactors = setUpBasicWeb3();
+let web3 = setUpWeb3();
 const time1 = Date.now();
 
 // helper fxns
@@ -31,17 +37,22 @@ const buildBatchOfAccounts = (acctsArr, batchSize, idx) => {
   const idxStart = idx * batchSize;
   const idxEnd = (idx + 1) * batchSize;
   const batchArr = acctsArr.slice(idxStart, idxEnd).map(acct => acct.address);
-  return batchArr;
+  const shuffled = shuffle(batchArr);
+  return shuffled;
 };
 
 const getHealthFactorForAccounts = async (_contract, batchOfAccounts, _token) => {
   // const _boa = batchOfAccounts.map(({ accountAddress, ...other }) => {return { accountAddress, ...other };} )
-  try {
-    const healthFactorArr = await _contract.methods.healthFactors(batchOfAccounts, _token).call();
-    return healthFactorArr;
-  } catch (err) {
-    console.log('error in get Health Factor For Accounts', err);
-    throw err;
+  for (let i = 0; i < 5; i += 1) {
+    try {
+      const healthFactorArr = await _contract.methods.healthFactors(batchOfAccounts, _token).call();
+      return healthFactorArr;
+    } catch (err) {
+      console.log('error in get Health Factor For Accounts', err);
+      // throw err;
+      web3HealthFactors = setUpBasicWeb3();
+      web3 = setUpWeb3();
+    }
   }
 };
 
@@ -86,29 +97,34 @@ const rankByEthAmt = _accountsWithReserveData => {
   const newArr = [];
   _accountsWithReserveData.forEach(acctObj => {
     const newAcctObj = { ...acctObj, tokens: {} };
-    const tokenKeys = Object.keys(acctObj.tokens).filter(key => key);
+    const tokenKeys = Object.keys(acctObj.tokens);
     let totalEthDebtForAcct = 0;
     let totalEthCollatForAcct = 0;
     let highestEthDebtAmt = 0;
     let highestEthCollatAmt = 0;
     let highestDebtAmt = 0;
     let highestCollatAmt = 0;
+    let highestDebtTokenAddress = '';
+    let highestCollatTokenAddress = '';
     acctObj.tokens.usdt.collateralInEth = 0;
     // filter out any tokens that are not used for debt or collateral
     for (let idx = 0; idx < tokenKeys.length; idx += 1) {
       const tokenName = tokenKeys[idx];
       // only add the token to the obj if it has > 0 eth in it
-      if (acctObj.tokens[tokenName].collateralInEth > 0.00001 || acctObj.tokens[tokenName].debtInEth > 0.00001) {
+      if (acctObj.tokens[tokenName].collateralInEth > 0.000005 || acctObj.tokens[tokenName].debtInEth > 0.000005) {
         newAcctObj.tokens[tokenName] = acctObj.tokens[tokenName];
+        // get the highest debt token amount and address
         if (acctObj.tokens[tokenName].debtInEth > highestEthDebtAmt) {
           newAcctObj.reserveAddress = acctObj.tokens[tokenName].tokenAddress;
           highestEthDebtAmt = acctObj.tokens[tokenName].debtInEth;
           highestDebtAmt = acctObj.tokens[tokenName].debt;
+          highestDebtTokenAddress = tokenName;
         }
         if (acctObj.tokens[tokenName].collateralInEth > highestEthCollatAmt) {
           newAcctObj.collateralAddress = acctObj.tokens[tokenName].tokenAddress;
           highestEthCollatAmt = acctObj.tokens[tokenName].collateralInEth;
           highestCollatAmt = acctObj.tokens[tokenName].collateral;
+          highestCollatTokenAddress = tokenName;
         }
         totalEthDebtForAcct += acctObj.tokens[tokenName].debtInEth;
         totalEthCollatForAcct += acctObj.tokens[tokenName].collateralInEth;
@@ -118,10 +134,12 @@ const rankByEthAmt = _accountsWithReserveData => {
     const hasDebtAndCollat = totalEthDebtForAcct > 0 && totalEthCollatForAcct > 0;
     if (Object.keys(newAcctObj.tokens).length > 0 && hasDebtAndCollat) {
       // calculate the debt to cover
-      const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
-      const ratio = maxLiquidatableInEth / highestEthDebtAmt;
+      // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
+      const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt) * 0.9;
+      const ratio = debtToCoverEth / highestEthDebtAmt;
       const trueLiquidatableAmt = Math.floor(ratio * highestDebtAmt);
       newAcctObj.debtToCover = trueLiquidatableAmt;
+      newAcctObj.debtToCoverEth = debtToCoverEth;
       newArr.push(newAcctObj);
     } else {
       // console.log('reportin', acctObj.accountAddress, acctObj.tokens)
@@ -148,23 +166,49 @@ const rankByEthAmt = _accountsWithReserveData => {
   return newArr;
 };
 
-const liquidateSingleAccount = async (_accountObj, _flashAndLiquidateContract) => {
-  console.log('_accountObj', _accountObj)
-  // 'flashAndLiquidate'
-  const { collateralAddress, reserveAddress, accountAddress: addressToLiquidate, debtToCover } = _accountObj;
+const liquidateSingleAccount = async (_accountObj, _flashAndLiquidateContract, _tokenInfo) => {
+  const { collateralAddress, reserveAddress, accountAddress: addressToLiquidate, debtToCover, debtToCoverEth } = _accountObj;
   const receiveATokens = false;
   // const res = await _flashAndLiquidateContract.methods.healthFactors(batchOfAccounts, _token).call();
   if (!collateralAddress  && typeof collateralAddress  !== typeof 'a' ) throw Error(`ERROR: Issue with collateralAddress: ${ collateralAddress}  typeof:${ typeof collateralAddress}`)
   if (!reserveAddress     && typeof reserveAddress     !== typeof 'a' ) throw Error(`ERROR: Issue with reserveAddress: ${    reserveAddress}  typeof:${    typeof reserveAddress}`)
   if (!addressToLiquidate && typeof addressToLiquidate !== typeof 'a' ) throw Error(`ERROR: Issue with addressToLiquidate: ${addressToLiquidate}  typeof:${typeof addressToLiquidate}`)
   if (!debtToCover        && typeof debtToCover        !== typeof 10  ) throw Error(`ERROR: Issue with debtToCover: ${       debtToCover}  typeof:${       typeof debtToCover}`)
-  const res = await _flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, debtToCover, receiveATokens).call();
-
-  console.log('liquidation resonse')
-  return res
+  // myContract.methods.myMethod(123).send()
+  try {
+    console.log('trying to liquidate _accountObj', _accountObj)
+    const expectedGasUsed = 1000000;
+    const gasLimit = 2000000;
+    const decimalsMatic = _tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal
+    const priceEthPerMatic = _tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
+    const priceEthPerMaticReal = priceEthPerMatic / (10 ** decimalsMatic);
+    const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
+    const debtToCoverInMatic = debtToCoverInMaticReal * (10 ** decimalsMatic);
+    console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMatic', debtToCoverInMatic)
+    // const maxLiquidatableInMatic = maxLiquidatableInMaticReal;
+    // const gasPrice = web3.utils.toWei(maxLiquidatableInMatic * (1 + liquidBonus) * 0.075, 'ether');
+    // const gasPrice = web3.utils.toWei(`${debtToCoverInMatic * 0.075}`, 'ether');
+    const gasPrice = 20000000000;
+    console.log('gasPrice', gasPrice)
+    const txnOptions = {
+      from: WEB3_WALLET,
+      gas: gasLimit,
+      gasPrice: gasPrice,
+    };
+    // const txnOptions2 = (maxLiquidatableInEth > 0.005 ? { from: WEB3_WALLET, gasPrice: 7000000000000000 } : { from: WEB3_WALLET, gasPrice: 1000000000000000 })//{ maxLiquidatableInEth };
+    console.log('txnOptions', txnOptions)
+    const res = _flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, receiveATokens).send(txnOptions);
+    console.log('\n\n test tset test testt \n\n')
+    console.log('\n\n response here\n',res, '\n\n end response\n')
+    res.catch(x => {console.log(x)})
+    return res;
+  } catch (err) {
+    console.log('failed liquidation _accountObj', _accountObj)
+    console.log('\nERROR IN THE LIQUIDATION CALL', err)
+  }
 };
 
-const liquidateAccounts = async (_accountsToLiquidate, _flashAndLiquidateContract) => {
+const liquidateAccounts = async (_accountsToLiquidate, _flashAndLiquidateContract, _tokenInfo) => {
   /**
    * 1. Store and retrieve each collateral's relevant details such as address, decimals used, and liquidation bonus as listed here. 
    * 2. Get the user's collateral balance (aTokenBalance).
@@ -174,13 +218,14 @@ const liquidateAccounts = async (_accountsToLiquidate, _flashAndLiquidateContrac
    * 6. Your approximate profit will be the value of the collateral bonus (4) minus the cost of your transaction (5).
    */
   // get reserves - reserve data needs to be in eth value as well as original a-token value
-  const accountsWithReserveData = await getReservesForAccounts(_accountsToLiquidate);
+  const accountsWithReserveData = await getReservesForAccounts(_accountsToLiquidate, _tokenInfo);
+
   // rank by largest liquidatable position
   const sortedAccounts = rankByEthAmt(accountsWithReserveData);
   for (let idx = 0; idx < sortedAccounts.length; idx += 1) {
     const acctObj = sortedAccounts[idx];
     // console.log(acctObj)
-    const res = liquidateSingleAccount(acctObj, _flashAndLiquidateContract);
+    const res = liquidateSingleAccount(acctObj, _flashAndLiquidateContract, _tokenInfo);
   }
   // accountsWithReserveData.forEach(element => {
   //   console.log('accountsWithReserveData', element)
@@ -197,19 +242,17 @@ const liquidateAccounts = async (_accountsToLiquidate, _flashAndLiquidateContrac
 
 // 1) get account balances
 // init
-const {
-  TABLE_ACCOUNTS,
-  POLY_URL1,
-} = process.env;
-const web3 = new Web3(new Web3(POLY_URL1));
+// const web3 = new Web3(new Web3(POLY_WSS_ANKR));
+// const web3 = new Web3(provider);
 // idk what token this is
 const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
 
-const loopThruAccounts = async rows => {
-  const healthFactorContract = await getContract(web3, healthFactorContractAbi, healthFactorContractAddress);
+const loopThruAccounts = async (web3, rows) => {
+  const healthFactorContract = await getContract(web3HealthFactors, healthFactorContractAbi, healthFactorContractAddress);
   const flashAndLiquidateContract = await getContract(web3, flashAndLiquidateAbi, flashAndLiquidateAddress);
+  const tokenInfo = await getChainLinkPrices();
   // loop vars
-  let batchSize = 95;
+  let batchSize = 105;
   let rowLen = rows.length;
   let batchCt = Math.floor(rowLen / batchSize) + 1;
   // loop thru batches of ~100 accts
@@ -220,12 +263,11 @@ const loopThruAccounts = async rows => {
 
     // check if any accounts in this batch should be liquidated or deleted, add them to list
     const { accountsToRemove, accountsToLiquidate } = getAcctsToLiquidateOrRemove(acctHealthFactorArr);
-    
     if (accountsToRemove.length > 0) {
       const removeResponse = await removeAccounts(accountsToRemove);
     }
     if (accountsToLiquidate.length > 0) {
-      const liquidationResponse = await liquidateAccounts(accountsToLiquidate, flashAndLiquidateContract);
+      const liquidationResponse = await liquidateAccounts(accountsToLiquidate, flashAndLiquidateContract, tokenInfo);
     }
     console.log('batch count', idx, '/', batchCt)
   }
@@ -239,8 +281,9 @@ const main = async () => {
   try {
     const { rows } = await db.query(query);
     console.log(rows.length)
-    await loopThruAccounts(rows);
+    await loopThruAccounts(web3, rows);
     console.log('end')
+    process.exit();
   } catch (err) {
     // console.log('ERROR IN MAIN', err);
     await db.end();

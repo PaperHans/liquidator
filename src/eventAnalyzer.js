@@ -6,8 +6,8 @@ import { address as aaveLendingPoolAddress, abi as aaveLendingPoolAbi } from './
 import { multiInsertQuery } from './utils/psqlUtils';
 import db from './db';
 // constants
-const { TABLE_ACCOUNTS, RPC1 } = process.env;
-const provider = new JsonRpcProvider(RPC1, 137);
+const { TABLE_ACCOUNTS, RPC2 } = process.env;
+const provider = new JsonRpcProvider(RPC2, 137);
 // fxns
 const getEventsOfInterestNew = abi => {
   const eventTypesofInterest = ['Borrow', 'Deposit', 'Withdraw', 'Repay'];
@@ -75,12 +75,9 @@ const combine = async (_eventsOfInterest, _blockStart, _blockEnd) => {
   return outputObj;
 };
 
-const testBlockStart = 16309999;
-const testBlockEnd = 16319999;
-
-const loopBlockStart = 16379999;
-const currentBlock = 16937231;
-const maxSize = 10000;
+const loopBlockStart = 17018853;
+const currentBlock = 17018853;
+const maxSize = 4000;
 const amtOfLoops = 1 + Math.floor((currentBlock - loopBlockStart) / maxSize);
 
 const main = async () => {
@@ -90,8 +87,8 @@ const main = async () => {
   for (let idx = 0; idx < amtOfLoops; idx += 1) {
     const { rows } = await db.query(getQuery);
     const existingAddressesArr = rows.map(addrObj => addrObj.address)
-    const blockStart = min(currentBlock, loopBlockStart + (idx * maxSize));
-    const blockEnd = min(currentBlock, blockStart + maxSize);
+    const blockStart = Math.min(currentBlock, loopBlockStart + (idx * maxSize));
+    const blockEnd = Math.min(currentBlock, blockStart + maxSize);
     const outputObj = await combine(eventsOfInterestArr, blockStart, blockEnd);
     
     console.log('displaying output', blockStart, blockEnd);
@@ -112,24 +109,6 @@ const main = async () => {
       console.log(res)
     }
   }
-  // const outputObj = await combine(eventsOfInterestArr, testBlockStart, testBlockEnd);
-
-  // console.log('displaying output');
-  // const allAddresses = [];
-  // Object.keys(outputObj).forEach(name => {
-  //   console.log(`\n Showing ${name} events: `)
-  //   outputObj[name].decodedLogs.forEach(dLog => {
-  //     dLog.forEach(str => {
-  //       if (str.includes('user: ') && !existingAddressesArr.includes(str.split('user: ')[1])) allAddresses.push(str.split('user: ')[1]);
-  //     })
-  //   });
-  // });
-
-  // console.log('allAddressesallAddresses', [...new Set(allAddresses)])
-  // const query = multiInsertQuery(['address'], TABLE_ACCOUNTS, [...new Set(allAddresses)])
-  // console.log(query)
-  // const res = await db.query(query);
-  // console.log(res)
 };
 
 main();
