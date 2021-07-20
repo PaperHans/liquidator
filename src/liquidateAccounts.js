@@ -20,6 +20,7 @@ import {
 } from './abis/custom/flashAndLiquidate';
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
 import { getReservesForAccounts, getChainLinkPrices } from './contractReserves';
+
 // constants
 const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
@@ -175,25 +176,51 @@ const liquidateSingleAccount = async (_accountObj, _flashAndLiquidateContract, _
   if (!addressToLiquidate && typeof addressToLiquidate !== typeof 'a' ) throw Error(`ERROR: Issue with addressToLiquidate: ${addressToLiquidate}  typeof:${typeof addressToLiquidate}`)
   if (!debtToCover        && typeof debtToCover        !== typeof 10  ) throw Error(`ERROR: Issue with debtToCover: ${       debtToCover}  typeof:${       typeof debtToCover}`)
   // myContract.methods.myMethod(123).send()
+  if ((collateralAddress === '0xD6DF932A45C0f255f85145f286eA0b292B21C90B' && reserveAddress === '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6') || (reserveAddress === '0xD6DF932A45C0f255f85145f286eA0b292B21C90B' && collateralAddress === '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6')) {
+    console.log("Found bad pair!");
+    return
+  }
   try {
     console.log('trying to liquidate _accountObj', _accountObj)
-    const expectedGasUsed = 1000000;
+    const expectedGasUsed = 600000;
     const gasLimit = 2000000;
     const decimalsMatic = _tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal
     const priceEthPerMatic = _tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
     const priceEthPerMaticReal = priceEthPerMatic / (10 ** decimalsMatic);
     const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
     const debtToCoverInMatic = debtToCoverInMaticReal * (10 ** decimalsMatic);
+    let collatBonus;
     console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMatic', debtToCoverInMatic)
+    if (collateralAddress === _tokenInfo['dai'].tokenAddress){
+      collatBonus = _tokenInfo['dai'].reward
+    }
+    if (collateralAddress === _tokenInfo['usdc'].tokenAddress){
+      collatBonus = _tokenInfo['usdc'].reward
+    }
+    if (collateralAddress === _tokenInfo['weth'].tokenAddress){
+      collatBonus = _tokenInfo['weth'].reward
+    }
+    if (collateralAddress === _tokenInfo['wbtc'].tokenAddress){
+      collatBonus = _tokenInfo['wbtc'].reward
+    }
+    if (collateralAddress === _tokenInfo['wmatic'].tokenAddress){
+      collatBonus = _tokenInfo['wmatic'].reward
+    }
+    if (collateralAddress === _tokenInfo['aave'].tokenAddress){
+      collatBonus = _tokenInfo['aave'].reward
+    }
+    const debtToCoverInMaticTotal = debtToCoverInMatic*collatBonus*0.3;
+    const debtToCoverInMaticPerGas = Math.round(debtToCoverInMaticTotal/expectedGasUsed);
+    console.log('debtToCoverInMaticTotal', debtToCoverInMaticTotal, 'debtToCoverInMaticPerGas', debtToCoverInMaticPerGas);
     // const maxLiquidatableInMatic = maxLiquidatableInMaticReal;
     // const gasPrice = web3.utils.toWei(maxLiquidatableInMatic * (1 + liquidBonus) * 0.075, 'ether');
     // const gasPrice = web3.utils.toWei(`${debtToCoverInMatic * 0.075}`, 'ether');
-    const gasPrice = 20000000000;
-    console.log('gasPrice', gasPrice)
+    const gasPrice = 22000000002;
+    console.log('gasPrice', debtToCoverInMaticPerGas)
     const txnOptions = {
       from: WEB3_WALLET,
       gas: gasLimit,
-      gasPrice: gasPrice,
+      gasPrice: debtToCoverInMaticPerGas,
     };
     // const txnOptions2 = (maxLiquidatableInEth > 0.005 ? { from: WEB3_WALLET, gasPrice: 7000000000000000 } : { from: WEB3_WALLET, gasPrice: 1000000000000000 })//{ maxLiquidatableInEth };
     console.log('txnOptions', txnOptions)
@@ -252,7 +279,7 @@ const loopThruAccounts = async (web3, rows) => {
   const flashAndLiquidateContract = await getContract(web3, flashAndLiquidateAbi, flashAndLiquidateAddress);
   const tokenInfo = await getChainLinkPrices();
   // loop vars
-  let batchSize = 105;
+  let batchSize = 100;
   let rowLen = rows.length;
   let batchCt = Math.floor(rowLen / batchSize) + 1;
   // loop thru batches of ~100 accts
@@ -274,15 +301,24 @@ const loopThruAccounts = async (web3, rows) => {
   console.log(`final time ${Date.now() - time1}  t2: ${Date.now()}  t1: ${time1}`);
 };
 
+const sleep = (ms) => {
+  console.log("sleeping for: ",ms/1000,"seconds")
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 //const payload = priceKeys.map(item => prePayload[item]);
 const query = `SELECT address FROM ${TABLE_ACCOUNTS};`;
 
 const main = async () => {
   try {
-    const { rows } = await db.query(query);
-    console.log(rows.length)
-    await loopThruAccounts(web3, rows);
-    console.log('end')
+    for (let i = 0; i < 5; i++) {
+        console.log("This is loop: ",i);
+        const { rows } = await db.query(query);
+        console.log(rows.length)
+        await loopThruAccounts(web3, rows);
+        console.log('end')
+        await sleep(60000)
+    }
     process.exit();
   } catch (err) {
     // console.log('ERROR IN MAIN', err);
