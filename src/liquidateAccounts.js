@@ -24,10 +24,10 @@ import { getReservesForAccounts, getChainLinkPrices } from './contractReserves';
 const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3, POLYGON_NODE_3_HTTPS, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
   mnemonic: { phrase: WEB3_MNEMONIC },
-  providerOrUrl: POLYGON_NODE_3_HTTPS,
+  providerOrUrl: POLY_URL3,
 });
 const setUpWeb3 = () => new Web3(provider);
-const setUpBasicWeb3 = () => new Web3(new Web3(POLYGON_NODE_3_HTTPS));
+const setUpBasicWeb3 = () => new Web3(new Web3(POLY_URL3));
 let web3HealthFactors = setUpBasicWeb3();
 let web3 = setUpWeb3();
 const healthFactorContract = getContract(setUpBasicWeb3(), healthFactorContractAbi, healthFactorContractAddress);
@@ -113,8 +113,8 @@ const rankByEthAmt = _accountsWithReserveData => {
     // filter out any tokens that are not used for debt or collateral
     for (let idx = 0; idx < tokenKeys.length; idx += 1) {
       const tokenName = tokenKeys[idx];
-      // only add the token to the obj if it has > 0 eth in it
-      if (acctObj.tokens[tokenName].collateralInEth > 0.000005 || acctObj.tokens[tokenName].debtInEth > 0.000005) {
+      // only add the token to the obj if it has > 0 eth in it 0.000005
+      if (acctObj.tokens[tokenName].collateralInEth > 0.00001 || acctObj.tokens[tokenName].debtInEth > 0.00001) {
         newAcctObj.tokens[tokenName] = acctObj.tokens[tokenName];
         // get the highest debt token amount and address
         if (acctObj.tokens[tokenName].debtInEth > highestEthDebtAmt) {
@@ -138,7 +138,7 @@ const rankByEthAmt = _accountsWithReserveData => {
     if (Object.keys(newAcctObj.tokens).length > 0 && hasDebtAndCollat) {
       // calculate the debt to cover
       // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
-      const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt) * 0.9;
+      const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
       const ratio = debtToCoverEth / highestEthDebtAmt;
       const trueLiquidatableAmt = Math.floor(ratio * highestDebtAmt);
       newAcctObj.debtToCover = trueLiquidatableAmt;
@@ -178,9 +178,14 @@ const liquidateSingleAccount = async (_accountObj, _tokenInfo) => {
   if (!addressToLiquidate && typeof addressToLiquidate !== typeof 'a' ) throw Error(`ERROR: Issue with addressToLiquidate: ${addressToLiquidate}  typeof:${typeof addressToLiquidate}`)
   if (!debtToCover        && typeof debtToCover        !== typeof 10  ) throw Error(`ERROR: Issue with debtToCover: ${       debtToCover}  typeof:${       typeof debtToCover}`)
   // myContract.methods.myMethod(123).send()
+  // skips the bad pair of AAVE/wBTC
+  if ((collateralAddress === '0xD6DF932A45C0f255f85145f286eA0b292B21C90B' && reserveAddress === '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6') || (reserveAddress === '0xD6DF932A45C0f255f85145f286eA0b292B21C90B' && collateralAddress === '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6')) {
+    console.log("Found bad pair!");
+    return
+  }
   try {
     console.log('trying to liquidate _accountObj', _accountObj)
-    const expectedMaxGasUsed = 1000000;
+    const expectedMaxGasUsed = 700000;
     const gasLimit = 2000000;
     const decimalsMatic = _tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal
     const priceEthPerMatic = _tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
@@ -188,13 +193,36 @@ const liquidateSingleAccount = async (_accountObj, _tokenInfo) => {
     const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
     const debtToCoverInMatic = debtToCoverInMaticReal * (10 ** decimalsMatic);
     console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMatic', debtToCoverInMatic)
+    // uses debtToCoverInMatic to calculate a gasPrice based on estimated profit and estimated gas used
+    let collatBonus;
+    if (collateralAddress === _tokenInfo['dai'].tokenAddress){
+      collatBonus = _tokenInfo['dai'].reward
+    }
+    if (collateralAddress === _tokenInfo['usdc'].tokenAddress){
+      collatBonus = _tokenInfo['usdc'].reward
+    }
+    if (collateralAddress === _tokenInfo['weth'].tokenAddress){
+      collatBonus = _tokenInfo['weth'].reward
+    }
+    if (collateralAddress === _tokenInfo['wbtc'].tokenAddress){
+      collatBonus = _tokenInfo['wbtc'].reward
+    }
+    if (collateralAddress === _tokenInfo['wmatic'].tokenAddress){
+      collatBonus = _tokenInfo['wmatic'].reward
+    }
+    if (collateralAddress === _tokenInfo['aave'].tokenAddress){
+      collatBonus = _tokenInfo['aave'].reward
+    }
+    const debtToCoverInMaticTotal = debtToCoverInMatic*collatBonus*0.5;
+    const debtToCoverInMaticPerGas = Math.round(debtToCoverInMaticTotal/expectedMaxGasUsed);
+    console.log('debtToCoverInMaticTotal', debtToCoverInMaticTotal, 'debtToCoverInMaticPerGas', debtToCoverInMaticPerGas);
     // const maxLiquidatableInMatic = maxLiquidatableInMaticReal;
     // const gasPrice = web3.utils.toWei(maxLiquidatableInMatic * (1 + liquidBonus) * 0.075, 'ether');
     // const gasPrice = web3.utils.toWei(`${debtToCoverInMatic * 0.075}`, 'ether');
     const gasPriceEst =  20000000000; // 20 gwei
-    const gasPriceCalc = gasPriceEst;
+    const gasPriceCalc = debtToCoverInMaticPerGas;
     const gasPriceMax =  20000000000000; // 20000 gwei ~ $33 with matic at $0.74/MATIC
-    console.log('gasPrice', gasPriceMax)
+    console.log('gasPrice', debtToCoverInMaticPerGas)
     const txnOptions = {
       from: WEB3_WALLET,
       gas: gasLimit,
@@ -202,6 +230,7 @@ const liquidateSingleAccount = async (_accountObj, _tokenInfo) => {
     };
     // const txnOptions2 = (maxLiquidatableInEth > 0.005 ? { from: WEB3_WALLET, gasPrice: 7000000000000000 } : { from: WEB3_WALLET, gasPrice: 1000000000000000 })//{ maxLiquidatableInEth };
     console.log('txnOptions', txnOptions)
+    console.log(flashAndLiquidateContract)
     const res = flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, receiveATokens).send(txnOptions);
     console.log('\n\n test tset test testt \n\n')
     console.log('\n\n response here\n',res, '\n\n end response\n')
@@ -255,7 +284,7 @@ const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
 const loopThruAccounts = async rows => {
   const tokenInfo = await getChainLinkPrices();
   // loop vars
-  let batchSize = 110;
+  let batchSize = 90;
   let rowLen = rows.length;
   let batchCt = Math.floor(rowLen / batchSize) + 1;
   // loop thru batches of ~100 accts
@@ -276,6 +305,11 @@ const loopThruAccounts = async rows => {
   }
   console.log(`final time ${Date.now() - time1}  t2: ${Date.now()}  t1: ${time1}`);
 };
+
+const sleep = (ms) => {
+  console.log("sleeping for: ",ms/1000,"seconds")
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 //const payload = priceKeys.map(item => prePayload[item]);
 const query = `SELECT address FROM ${TABLE_ACCOUNTS};`;
