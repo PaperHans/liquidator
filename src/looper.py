@@ -7,7 +7,7 @@ timestart = time()
 while True:
   loopstart = time()
   counter += 1
-  system('yarn loop')
+  system('yarn singleLoop')
   # dt = datetime.now()
   print(f"\n loop count: {counter}  |||  time running: {time() - timestart} |||  loop time: {time() - loopstart} ")
   # print('done')
