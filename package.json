@@ -8,7 +8,8 @@
     "reserves": "node index.js contractReserves",
     "singleLoop": "node index.js liquidateAccounts",
     "loop": "python3 src/looper.py",
-    "analyze-events": "node index.js eventAnalyzer"
+    "analyze-events": "node index.js eventAnalyzer",
+    "query": "node index.js testQuery"
   },
   "author": "",
   "license": "ISC",
