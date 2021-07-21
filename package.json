@@ -7,7 +7,8 @@
     "listen": "node index.js chainlinkPriceListener",
     "reserves": "node index.js contractReserves",
     "loop": "node index.js liquidateAccounts",
-    "analyze-events": "node index.js eventAnalyzer"
+    "analyze-events": "node index.js eventAnalyzer",
+    "query": "node index.js testQuery"
   },
   "author": "",
   "license": "ISC",

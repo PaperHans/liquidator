@@ -25,10 +25,10 @@ import { getReservesForAccounts, getChainLinkPrices } from './contractReserves';
 const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
   mnemonic: { phrase: WEB3_MNEMONIC },
-  providerOrUrl: POLY_URL3,
+  providerOrUrl: POLY_URL1,
 });
 const setUpWeb3 = () => new Web3(provider);
-const setUpBasicWeb3 = () => new Web3(new Web3(POLY_URL2));
+const setUpBasicWeb3 = () => new Web3(new Web3(POLY_URL1));
 let web3HealthFactors = setUpBasicWeb3();
 let web3 = setUpWeb3();
 const time1 = Date.now();
@@ -112,7 +112,8 @@ const rankByEthAmt = _accountsWithReserveData => {
     for (let idx = 0; idx < tokenKeys.length; idx += 1) {
       const tokenName = tokenKeys[idx];
       // only add the token to the obj if it has > 0 eth in it
-      if (acctObj.tokens[tokenName].collateralInEth > 0.000005 || acctObj.tokens[tokenName].debtInEth > 0.000005) {
+      if (acctObj.tokens[tokenName].collateralInEth > 0.000001 || acctObj.tokens[tokenName].debtInEth > 0.000001) {
+      //if (acctObj.tokens[tokenName].debtInEth > 0.000001) {
         newAcctObj.tokens[tokenName] = acctObj.tokens[tokenName];
         // get the highest debt token amount and address
         if (acctObj.tokens[tokenName].debtInEth > highestEthDebtAmt) {
@@ -136,7 +137,7 @@ const rankByEthAmt = _accountsWithReserveData => {
     if (Object.keys(newAcctObj.tokens).length > 0 && hasDebtAndCollat) {
       // calculate the debt to cover
       // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
-      const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt) * 0.9;
+      const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
       const ratio = debtToCoverEth / highestEthDebtAmt;
       const trueLiquidatableAmt = Math.floor(ratio * highestDebtAmt);
       newAcctObj.debtToCover = trueLiquidatableAmt;
@@ -182,7 +183,7 @@ const liquidateSingleAccount = async (_accountObj, _flashAndLiquidateContract, _
   }
   try {
     console.log('trying to liquidate _accountObj', _accountObj)
-    const expectedGasUsed = 600000;
+    const expectedGasUsed = 700000;
     const gasLimit = 2000000;
     const decimalsMatic = _tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal
     const priceEthPerMatic = _tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
@@ -209,25 +210,30 @@ const liquidateSingleAccount = async (_accountObj, _flashAndLiquidateContract, _
     if (collateralAddress === _tokenInfo['aave'].tokenAddress){
       collatBonus = _tokenInfo['aave'].reward
     }
-    const debtToCoverInMaticTotal = debtToCoverInMatic*collatBonus*0.3;
-    const debtToCoverInMaticPerGas = Math.round(debtToCoverInMaticTotal/expectedGasUsed);
+    const debtToCoverInMaticTotal = debtToCoverInMatic*collatBonus*0.35;
+    const estimy = await _flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, receiveATokens).estimateGas({ from: WEB3_WALLET });
+    const debtToCoverInMaticPerGas = Math.round(debtToCoverInMaticTotal/estimy);
     console.log('debtToCoverInMaticTotal', debtToCoverInMaticTotal, 'debtToCoverInMaticPerGas', debtToCoverInMaticPerGas);
     // const maxLiquidatableInMatic = maxLiquidatableInMaticReal;
     // const gasPrice = web3.utils.toWei(maxLiquidatableInMatic * (1 + liquidBonus) * 0.075, 'ether');
     // const gasPrice = web3.utils.toWei(`${debtToCoverInMatic * 0.075}`, 'ether');
+    const nonce = await web3.eth.getTransactionCount(WEB3_WALLET, 'pending');
+    console.log("NONCENONCE ",nonce);
     const gasPrice = 22000000002;
+    const minGas = Math.max(gasPrice,debtToCoverInMaticPerGas);
     console.log('gasPrice', debtToCoverInMaticPerGas)
     const txnOptions = {
       from: WEB3_WALLET,
       gas: gasLimit,
-      gasPrice: debtToCoverInMaticPerGas,
+      gasPrice: minGas,
+      nonce: nonce+1
     };
     // const txnOptions2 = (maxLiquidatableInEth > 0.005 ? { from: WEB3_WALLET, gasPrice: 7000000000000000 } : { from: WEB3_WALLET, gasPrice: 1000000000000000 })//{ maxLiquidatableInEth };
     console.log('txnOptions', txnOptions)
     const res = _flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, receiveATokens).send(txnOptions);
     console.log('\n\n test tset test testt \n\n')
     console.log('\n\n response here\n',res, '\n\n end response\n')
-    res.catch(x => {console.log(x)})
+    //res.catch(x => {console.log(x)})
     return res;
   } catch (err) {
     console.log('failed liquidation _accountObj', _accountObj)
@@ -311,13 +317,13 @@ const query = `SELECT address FROM ${TABLE_ACCOUNTS};`;
 
 const main = async () => {
   try {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 15; i++) {
         console.log("This is loop: ",i);
         const { rows } = await db.query(query);
         console.log(rows.length)
         await loopThruAccounts(web3, rows);
         console.log('end')
-        await sleep(60000)
+        await sleep(60000*5)
     }
     process.exit();
   } catch (err) {

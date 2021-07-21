@@ -75,8 +75,8 @@ const combine = async (_eventsOfInterest, _blockStart, _blockEnd) => {
   return outputObj;
 };
 
-const loopBlockStart = 17018853;
-const currentBlock = 17018853;
+const loopBlockStart = 15646853;
+const currentBlock = 16018853;
 const maxSize = 4000;
 const amtOfLoops = 1 + Math.floor((currentBlock - loopBlockStart) / maxSize);
 
