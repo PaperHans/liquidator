@@ -20,6 +20,7 @@ import {
 } from './abis/custom/flashAndLiquidate';
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
 import { getReservesForAccounts, getChainLinkPrices } from './contractReserves';
+import { buildBatchOfAccounts } from './utils/accountBatchFxns';
 // constants
 const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3 ,CHAINSTACK_HTTPS, CHAINSTACK_WSS, TABLE_ACCOUNTS, PRIVATE_KEY } = process.env;
 let provider = new HDWalletProvider({
@@ -36,14 +37,6 @@ const flashAndLiquidateContract = getContract(web3, flashAndLiquidateAbi, flashA
 const time1 = Date.now();
 
 // helper fxns
-const buildBatchOfAccounts = (acctsArr, batchSize, idx) => {
-  const idxStart = idx * batchSize;
-  const idxEnd = (idx + 1) * batchSize;
-  const batchArr = acctsArr.slice(idxStart, idxEnd).map(acct => acct.address);
-  const shuffled = shuffle(batchArr);
-  return shuffled;
-};
-
 const getHealthFactorForAccounts = async (batchOfAccounts, _token) => {
   // const _boa = batchOfAccounts.map(({ accountAddress, ...other }) => {return { accountAddress, ...other };} )
   for (let i = 0; i < 5; i += 1) {

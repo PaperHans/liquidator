@@ -11,7 +11,8 @@
     "analyze-events": "node index.js eventAnalyzer",
     "query": "node index.js testQuery",
     "adder": "node index.js addressAdder",
-    "liquidations": "node index.js liquidationListener"
+    "liquidations": "node index.js liquidationListener",
+    "updateHealthFactors": "node index.js updateHealthFactors"
   },
   "author": "",
   "license": "ISC",
