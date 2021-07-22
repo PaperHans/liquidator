@@ -2,6 +2,14 @@
 import Web3 from 'web3';
 // local imports
 import abis from '../abis';
+import {
+  abi as aaveDataProviderAbi,
+  address as aaveDataProviderAddress,
+} from '../abis/aave/general/aaveDataProvider';
+import {
+  abi as aaveLendingPoolAbi,
+  address as aaveLendingPoolAddress,
+} from '../abis/aave/general/aaveLendingPool';
 import { mainnet as addresses } from '../addresses';
 import { getContract } from '../utils/web3Utils';
 // constants
@@ -11,7 +19,7 @@ const web3 = new Web3(new Web3(POLY_URL));
 // Begin Script
 const main = async () => {
   // get contracts
-  const aaveLendingPool = await getContract(web3, abis.aaveLendingPool.aaveLendingPoolProxy, addresses.aave.aaveLendingPoolProxy);
+  const aaveLendingPool = await getContract(web3, aaveLendingPoolAbi, aaveLendingPoolAddress);
   // const aaveDataProvider = await getContract(web3, abis.aaveDataProvider.aaveDataProviderProxy, addresses.aave.aaveDataProviderProxy);
   // const aavePriceOracle = await getContract(web3, abis.aavePriceOracle.aavePriceOracleProxy, addresses.aave.aavePriceOracleProxy);
   // const contractSelf = await getContract(web3, abis.contractAbi.contractAbi, addresses.aave.contractProxy);
