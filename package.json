@@ -9,7 +9,8 @@
     "singleLoop": "node index.js liquidateAccounts",
     "loop": "python3 src/looper.py",
     "analyze-events": "node index.js eventAnalyzer",
-    "query": "node index.js testQuery"
+    "query": "node index.js testQuery",
+    "adder": "node index.js addressAdder"
   },
   "author": "",
   "license": "ISC",
