@@ -21,13 +21,13 @@ import {
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
 import { getReservesForAccounts, getChainLinkPrices } from './contractReserves';
 // constants
-const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3, SPEED_MORALIS ,POLYGON_NODE_3_HTTPS, TABLE_ACCOUNTS, PRIVATE_KEY } = process.env;
+const { WEB3_WALLET, WEB3_MNEMONIC, POLY_URL1, POLY_URL2, POLY_URL3 ,CHAINSTACK_HTTPS, CHAINSTACK_WSS, TABLE_ACCOUNTS, PRIVATE_KEY } = process.env;
 let provider = new HDWalletProvider({
   mnemonic: { phrase: WEB3_MNEMONIC },
-  providerOrUrl: POLY_URL3,
+  providerOrUrl: CHAINSTACK_HTTPS,
 });
 const setUpWeb3 = () => new Web3(provider);
-const setUpBasicWeb3 = () => new Web3(new Web3(POLY_URL3));
+const setUpBasicWeb3 = () => new Web3(new Web3.providers.HttpProvider(POLY_URL3));
 let web3HealthFactors = setUpBasicWeb3();
 let web3 = setUpWeb3();
 const healthFactorContract = getContract(setUpBasicWeb3(), healthFactorContractAbi, healthFactorContractAddress);
