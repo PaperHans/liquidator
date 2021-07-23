@@ -292,20 +292,20 @@ const liquidateAccounts = async (_accountsToLiquidate, _tokenInfo) => {
 // idk what token this is
 const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
 
-const loopThruAccounts = async rows => {
+const loopThruAccounts = async accountsObjArr => {
   const tokenInfo = await getChainLinkPrices();
   // loop vars
   let batchSize = 90;
-  let rowLen = rows.length;
+  let rowLen = accountsObjArr.length;
   let batchCt = Math.floor(rowLen / batchSize) + 1;
   // loop thru batches of ~100 accts
   for (let idx = 0; idx < batchCt; idx += 1) {
-    const batchOfAccounts = buildBatchOfAccounts(rows, batchSize, idx);
-    const healthFactorArr = await getHealthFactorForAccounts(batchOfAccounts, token);
-    const acctHealthFactorArr = mapHealthFactorToAccounts(healthFactorArr, batchOfAccounts);
+    const batchOfAccounts = buildBatchOfAccounts(accountsObjArr, batchSize, idx);
+    // const healthFactorArr = await getHealthFactorForAccounts(batchOfAccounts, token);
+    // const acctHealthFactorArr = mapHealthFactorToAccounts(healthFactorArr, batchOfAccounts);
     
     // check if any accounts in this batch should be liquidated or deleted, add them to list
-    const { accountsToRemove, accountsToLiquidate } = getAcctsToLiquidateOrRemove(acctHealthFactorArr);
+    const { accountsToRemove, accountsToLiquidate } = getAcctsToLiquidateOrRemove(batchOfAccounts);
     if (accountsToRemove.length > 0) {
       const removeResponse = await removeAccounts(accountsToRemove);
     }

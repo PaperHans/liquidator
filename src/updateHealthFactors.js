@@ -5,7 +5,7 @@
  */
 // modules
 import Web3 from 'web3';
-import _, { toNumber, shuffle } from 'lodash';
+import _, { toNumber } from 'lodash';
 // local imports
 import db from "./db";
 import { buildBatchOfAccounts } from './utils/accountBatchFxns';
@@ -14,6 +14,7 @@ import {
   abi     as healthFactorContractAbi,
 } from './abis/custom/healthFactor';
 import { getContract } from "./utils/web3Utils";
+import { buildMultiDeleteQuery } from './utils/psqlUtils';
 const setUpBasicWeb3 = url => new Web3(new Web3(url));
 // constants
 const {
@@ -49,33 +50,51 @@ const getHealthFactorForAccounts = async _batchOfAccounts => {
     }
   }
 };
+const removeAccounts = async _accountsToRemove => {
+  const query = buildMultiDeleteQuery('accounts', 'address', _accountsToRemove);
+  console.log('query', query)
+  try {
+    const res = await db.query(query);
+    console.log('DELETED ROWS', res.rows.length);
+    return { response: res, error: null };
+  } catch (err) {
+    console.log('error removing accounts', err)
+    return { response: null, error: err };
+  }
+};
 const batchUpdateHealthFactor = async _acctHealthFactorArr => {
   // const query = `UPDATE ${TABLE_ACCOUNTS} SET `;
   // const queryValues = _acctHealthFactorArr.join(', ');
   const idArr = [];
   const queryValues = [];
+  // const toRemoveValues = [];
+  const toRemoveIdArr = _acctHealthFactorArr
+    .filter(({ healthFactor }) => { return !(healthFactor < 3000000000000000000 && healthFactor > 100000000000000000); })
+    .map(({ accountAddress }) => ({ accountAddress }));
   _acctHealthFactorArr.forEach(({ accountAddress, healthFactor }) => {
-    if (healthFactor < 10000000000000000000) {
+    if (healthFactor < 3000000000000000000 && healthFactor > 100000000000000000) {
       idArr.push(`'${accountAddress}'`);
-      queryValues.push(`WHEN '${accountAddress}' THEN ${healthFactor} `);
+      queryValues.push(`WHEN '${accountAddress}' THEN ${healthFactor}`);
     }
   });
-  const matchParamNameInTable = 'address';
-  const updateParamNameInTable = 'health_factor';
-  const querySet = `SET ${updateParamNameInTable} = CASE ${matchParamNameInTable}`;
-  const queryEnd = `ELSE ${updateParamNameInTable} END`;
-  const queryWhere = `WHERE ${matchParamNameInTable} IN(${idArr.join(', ')})`;
-  const query =  `UPDATE ${TABLE_ACCOUNTS} ${querySet} ${queryValues.join(' ')} ${queryEnd} ${queryWhere}`;
-  console.log(query)
-  try {
-    const res = await db.query(query);
-    console.log('resres', res)
-  } catch (err) {
-    console.log('\noopsie \n\n')
-    _acctHealthFactorArr.forEach(({ accountAddress, healthFactor }) => {
-      console.log(`row: ${accountAddress}: ${healthFactor}`)
-    });
-    throw new Error(err);
+  if (queryValues.length > 0) {
+    const matchParamNameInTable = 'address';
+    const updateParamNameInTable = 'health_factor';
+    const querySet = `SET ${updateParamNameInTable} = CASE ${matchParamNameInTable}`;
+    const queryEnd = `ELSE ${updateParamNameInTable} END`;
+    const queryWhere = `WHERE ${matchParamNameInTable} IN(${idArr.join(', ')})`;
+    const query =  `UPDATE ${TABLE_ACCOUNTS} ${querySet} ${queryValues.join(' ')} ${queryEnd} ${queryWhere}`;
+    try {
+      const res = await db.query(query);
+    } catch (err) {
+      queryValues.forEach(row => {
+        console.log(`row: `, row)
+      });
+      throw new Error(err);
+    }
+  }
+  if (toRemoveIdArr.length > 0) {
+    await removeAccounts(toRemoveIdArr);
   }
 };
 
@@ -83,7 +102,7 @@ const batchUpdateHealthFactor = async _acctHealthFactorArr => {
 const loopAndUpdateAccounts = async _accountsArr => {
   if (!_accountsArr || _accountsArr.length === 0) throw new Error('Issue pulling accounts from db');
   // loop vars
-  let batchSize = 110;
+  let batchSize = 120;
   let rowLen = _accountsArr.length;
   let batchCt = Math.floor(rowLen / batchSize) + 1;
 

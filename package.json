@@ -12,7 +12,8 @@
     "query": "node index.js testQuery",
     "adder": "node index.js addressAdder",
     "liquidations": "node index.js liquidationListener",
-    "updateHealthFactors": "node index.js updateHealthFactors"
+    "updateHealthFactors": "node index.js updateHealthFactors",
+    "loadFromCsv": "node index.js loadFromCsv"
   },
   "author": "",
   "license": "ISC",
