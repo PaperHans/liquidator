@@ -1,14 +1,18 @@
 // modules
 import Web3 from 'web3';
+import db from "./db";
+import { updateValueQuery, searchUserQuery, insertUserQuery } from './utils/psqlUtils';
+import _, { toNumber, shuffle } from 'lodash';
 import { closeWeb3, getContract } from './utils/web3Utils';
 import { address as aaveLendingPoolAddress, abi as aaveLendingPoolAbi } from './abis/aave/general/aaveLendingPool';
 
 // init
 const {
-    POLY_URL1,
+    CHAINSTACK_WSS,
+    TABLE_ACCOUNTS
 } = process.env;
-if (!POLY_URL1) throw 'Please request .env file';
-const web3 = new Web3(new Web3(POLY_URL1));
+if (!CHAINSTACK_WSS) throw 'Please request .env file';
+const web3 = new Web3(new Web3.providers.WebsocketProvider(CHAINSTACK_WSS));
 
 // const borrowTopic = '0xc6a898309e823ee50bac64e45ca8adba6690e99e7841c45d754e2a38e9019d9b';
 // const depositTopic = '0xde6857219544bb5b7746f48ed30be6386fefc61b2f864cacf559893bf50fd951';
@@ -31,17 +35,41 @@ const init = async () => {
             event.event === 'Borrow' ||
             event.event === 'Deposit'
         ) {
-            // userData = (await contract.methods.getUserAccountData(event.returnValues.onBehalfOf).call());
-            // healthy = userData.healthFactor;
-            console.log(event.returnValues.onBehalfOf," ",event.event); //," ",healthy);
+            console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
+            // does the user exist? if not add them
+            const { rows } = await db.query(searchUserQuery(TABLE_ACCOUNTS,event.returnValues.onBehalfOf.toLowerCase()));
+            console.log(rows[0].exists)
+            if ( rows[0].exists === 0 ) {
+                // get user health factor
+                userData = (await contract.methods.getUserAccountData(event.returnValues.onBehalfOf.toLowerCase()).call());
+                healthy = userData.healthFactor;
+                console.log(toNumber(healthy))
+                // add user with health factor
+                if ( toNumber(healthy) < 2000000000000000000 ) {
+                    const res = await db.query(insertUserQuery(TABLE_ACCOUNTS,event.returnValues.onBehalfOf.toLowerCase(),healthy));
+                    console.log(res)
+                }
+            }
         }
         if (
             event.event === 'Repay' ||
             event.event === 'Withdraw'
         ) {
-            // userData = (await contract.methods.getUserAccountData(event.returnValues.user).call());
-            // healthy = userData.healthFactor;
-            console.log(event.returnValues.user," ",event.event); //," ",healthy);
+            console.log(event.returnValues.user.toLowerCase()," ",event.event);
+            // does the user exist? if not add them
+            const { rows } = await db.query(searchUserQuery(TABLE_ACCOUNTS,event.returnValues.user.toLowerCase()));
+            console.log(rows[0].exists)
+            if ( rows[0].exists === 0 ) {
+                // get user health factor
+                userData = (await contract.methods.getUserAccountData(event.returnValues.user.toLowerCase()).call());
+                healthy = userData.healthFactor;
+                console.log(toNumber(healthy))
+                // add user with health factor
+                if ( toNumber(healthy) < 2000000000000000000 ) {
+                    const res = await db.query(insertUserQuery(TABLE_ACCOUNTS,event.returnValues.user.toLowerCase(),healthy));
+                    console.log(res)
+                }
+            }
         }
     })
     .on('error', async err => {

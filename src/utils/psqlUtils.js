@@ -36,6 +36,24 @@ export const multiInsertQuery = (keysArr, tableName, payloadArr) => {
   return query;
 };
 
+//updates health_factor
+export const updateValueQuery = (tableName, userName, valueName) => {
+  const query = `UPDATE ${tableName} SET health_factor = ${valueName} WHERE address = '${userName}';`;
+  return query;
+};
+
+//checks if user exists
+export const searchUserQuery = (tableName, userName) => {
+  const query = `SELECT (EXISTS (SELECT 1 FROM ${tableName} WHERE address = '${userName}'))::int;`;
+  return query;
+};
+
+//checks if user exists
+export const insertUserQuery = (tableName, userName, healthFactor) => {
+  const query = `INSERT INTO ${tableName} (address, health_factor) values ('${userName}',${healthFactor});`;
+  return query;
+};
+
 export const createTable = () => {
   let query = `
     CREATE TABLE borrows (
