@@ -6,6 +6,7 @@
 // modules
 import Web3 from 'web3';
 import _, { toNumber } from 'lodash';
+import fetch from 'node-fetch';
 // local imports
 import db from "./db";
 import { buildBatchOfAccounts } from './utils/accountBatchFxns';
@@ -15,6 +16,7 @@ import {
 } from './abis/custom/healthFactor';
 import { getContract } from "./utils/web3Utils";
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
+
 const setUpBasicWeb3 = url => new Web3(new Web3(url));
 // constants
 const {
@@ -63,11 +65,8 @@ const removeAccounts = async _accountsToRemove => {
   }
 };
 const batchUpdateHealthFactor = async _acctHealthFactorArr => {
-  // const query = `UPDATE ${TABLE_ACCOUNTS} SET `;
-  // const queryValues = _acctHealthFactorArr.join(', ');
   const idArr = [];
   const queryValues = [];
-  // const toRemoveValues = [];
   const toRemoveIdArr = _acctHealthFactorArr
     .filter(({ healthFactor }) => { return !(healthFactor < 3000000000000000000 && healthFactor > 100000000000000000); })
     .map(({ accountAddress }) => ({ accountAddress }));
@@ -94,6 +93,7 @@ const batchUpdateHealthFactor = async _acctHealthFactorArr => {
     }
   }
   if (toRemoveIdArr.length > 0) {
+    console.log('\n\nremoving accounts')
     await removeAccounts(toRemoveIdArr);
   }
 };
