@@ -36,7 +36,8 @@ const healthFactorContract = getContract(
 
 // fxns
 const getAllAccounts = async () => {
-  const query = `SELECT address FROM ${TABLE_ACCOUNTS};`;
+  // TODO: make the query order by ascending
+  const query = `SELECT address FROM ${TABLE_ACCOUNTS} ORDER BY health_factor ASC;`;
   const { rows: accountsArr } = await db.query(query);
   return accountsArr;
 };
@@ -73,18 +74,19 @@ const batchUpdateHealthFactor = async _acctHealthFactorArr => {
   _acctHealthFactorArr.forEach(({ accountAddress, healthFactor }) => {
     if (healthFactor < 3000000000000000000 && healthFactor > 100000000000000000) {
       idArr.push(`'${accountAddress}'`);
-      queryValues.push(`WHEN '${accountAddress}' THEN ${healthFactor}`);
+      queryValues.push(healthFactor);
     }
   });
   if (queryValues.length > 0) {
-    const matchParamNameInTable = 'address';
-    const updateParamNameInTable = 'health_factor';
-    const querySet = `SET ${updateParamNameInTable} = CASE ${matchParamNameInTable}`;
-    const queryEnd = `ELSE ${updateParamNameInTable} END`;
-    const queryWhere = `WHERE ${matchParamNameInTable} IN(${idArr.join(', ')})`;
-    const query =  `UPDATE ${TABLE_ACCOUNTS} ${querySet} ${queryValues.join(' ')} ${queryEnd} ${queryWhere}`;
+    // build the query
+    const keyName = 'address';
+    const valName = 'health_factor';
+    const queryInit = `UPDATE ${TABLE_ACCOUNTS} SET ${valName} = data_table.${valName} FROM`;
+    const querySelect = `(SELECT UNNEST(array[${idArr.join(', ')}]) AS ${keyName}, UNNEST(array[${queryValues.join(', ')}]) AS ${valName}) AS data_table`;
+    const queryWhere = `WHERE ${TABLE_ACCOUNTS}.${keyName} = data_table.${keyName}`;
+    const query = `${queryInit} ${querySelect} ${queryWhere};`;
     try {
-      const res = await db.query(query);
+      await db.query(query);
     } catch (err) {
       queryValues.forEach(row => {
         console.log(`row: `, row)

@@ -9,5 +9,5 @@ export const chainlink = {
     // chainAggUsdc: "0xa0Ea34dF1edef56d8E1A8479f7CC2ce70D5dffb5",
     // chainAggWbtc: "0xd83D9151f491a25Aa9901428f598555f2F235d7c",
     // chainAggAave: "0x3DE262d27aD7f03522cD1d2d1a3B4c9A90ca4071",
-    // chainAggMatic: "0x058115BeFC3621816EE7a69E651015E45F6e67da",
+    // chainAggWmatic: "0x058115BeFC3621816EE7a69E651015E45F6e67da",
 };

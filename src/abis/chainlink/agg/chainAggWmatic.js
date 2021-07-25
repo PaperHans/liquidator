@@ -1,6 +1,6 @@
 export const address = '0x058115BeFC3621816EE7a69E651015E45F6e67da';
 export const abi = {
-    "chainAggMatic": [
+    "chainAggWmatic": [
         {
             "inputs": [
                 {
