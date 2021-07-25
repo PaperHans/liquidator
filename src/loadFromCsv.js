@@ -64,9 +64,13 @@ const formatValuesForQuery = rows => {
 
 const mungCsv = (csvRows, dbRows) => {
   const addressesArr = csvRows.map(row => row.split(',')[0]);
-  const filteredArr = csvRows.filter(addr => !dbRows.includes(addr));
+  const filteredArr = csvRows.filter(addr => {
+    const includesDefault = !dbRows.includes(addr);
+    const includesLower = !dbRows.includes(addr.toLowerCase());
+    return includesDefault || includesLower;
+  });
   const mungedList = filteredArr.filter(addr => addr.includes('0x') && addr !== '0x0000000000000000000000000000000000000000');
-  const addedquotes = mungedList.map(address => `('${address}')`);
+  const addedquotes = mungedList.map(address => `('${address.toLowerCase()}')`);
   return addedquotes;
 };
 

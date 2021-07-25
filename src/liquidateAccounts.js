@@ -269,7 +269,7 @@ const loopThruAccounts = async accountsObjArr => {
     const batchOfAccounts = buildBatchOfAccounts(accountsObjArr, batchSize, idx);
     // const healthFactorArr = await getHealthFactorForAccounts(batchOfAccounts, token);
     // const acctHealthFactorArr = mapHealthFactorToAccounts(healthFactorArr, batchOfAccounts);
-    
+
     // check if any accounts in this batch should be liquidated or deleted, add them to list
     const accountsToLiquidate = getAcctsToLiquidate(batchOfAccounts);
     if (accountsToLiquidate.length > 0) {
