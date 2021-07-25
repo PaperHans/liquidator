@@ -1,13 +1,16 @@
+-- fxn
 CREATE OR REPLACE FUNCTION public.notify_testevent()
-  RETURNS trigger
-  LANGUAGE plpgsql
-AS $function$
-BEGIN
-  PERFORM pg_notify('new_testevent', row_to_json(NEW)::text);
-  RETURN NULL;
-END;
-$function$
+  RETURNS trigger AS $$ DECLARE
+    BEGIN
+      PERFORM pg_notify('new_testevent', row_to_json(NEW)::text);
+      RETURN new;
+    END;
+  $$
+  LANGUAGE plpgsql;
 
-
-CREATE TRIGGER updated_test_trigger AFTER INSERT ON accounts
-FOR EACH ROW EXECUTE PROCEDURE notify_testevent();
+-- trigger
+CREATE TRIGGER test_trigger
+AFTER INSERT OR UPDATE ON public.accounts
+FOR EACH ROW
+  WHEN ( CAST( new.health_factor AS BIGINT ) < 1000000000000000000 )
+  EXECUTE PROCEDURE public.notify_testevent();

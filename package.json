@@ -13,7 +13,8 @@
     "adder": "node index.js addressAdder",
     "liquidations": "node index.js liquidationListener",
     "updateHealthFactors": "node index.js updateHealthFactors",
-    "loadFromCsv": "node index.js loadFromCsv"
+    "loadFromCsv": "node index.js loadFromCsv",
+    "healthListen": "node index.js dbHealthUpdateListener"
   },
   "author": "",
   "license": "ISC",
@@ -30,6 +31,7 @@
     "lodash": "^4.17.21",
     "node-fetch": "^2.6.1",
     "pg": "^8.6.0",
+    "pg-listen": "^1.7.0",
     "web3": "^1.3.5"
   }
 }

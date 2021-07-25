@@ -1,6 +1,7 @@
 // modules
 import { Pool } from 'pg';
 import fs from 'fs';
+// import createSubscriber from 'pg-listen';
 // init
 const {
   DB_USER: user,
@@ -11,6 +12,9 @@ const {
   SSL_PATH,
 } = process.env;
 
+// const conString = `postgres://${user}:${password}@${host}:${port}/${database}?ssl=true`;
+// const conString = `jdbc:postgresql://SG-paperHans-2075-pgsql-master.servers.mongodirector.com:${port}/${database}?ssl=true&sslrootcert=/Users/matthias/work/liquidator/certs/ph1`;
+// export const subscriber = createSubscriber({ connectionString: conString });
 class PostgresObj {
   constructor() {
     this.client = new Pool({
@@ -31,7 +35,7 @@ class PostgresObj {
       await this.client.connect();
       console.log(`Connected to PostgreSQL: port ${port}`);
     } catch (err) {
-      console.log('error connecting to postgres: \n', error);
+      console.log('error connecting to postgres: \n', err);
     }
   }
   async close() {
