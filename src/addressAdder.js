@@ -30,6 +30,9 @@ const init = async () => {
       //filter: {event: 'Borrow'}
       //topics: [borrowTopic,depositTopic]
   })
+    .on("connected", async subscriptionId => {
+        console.log(subscriptionId);
+    })
     .on('data', async event => {
         if (
             event.event === 'Borrow' ||
