@@ -7,8 +7,8 @@ timestart = time()
 while True:
     loopstart = time()
     counter += 1
-    system('yarn updateHealthFactors')
+    system('yarn updateHealthFactorsTop')
     # dt = datetime.now()
     print(f"\n loop count: {counter}  |||  time running: {time() - timestart} |||  loop time: {time() - loopstart} ")
     # print('done')
-    sleep(60)
+    sleep(10)

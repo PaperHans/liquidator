@@ -40,8 +40,9 @@ const getAllAccounts = async () => {
   // TODO: make the query order by ascending
   // SELECT TOP 50 PERCENT address FROM ${TABLE_ACCOUNTS};
   // SELECT address FROM (SELECT TOP 50 PERCENT address FROM ${TABLE_ACCOUNTS} ORDER BY address DESC) ORDER BY address ASC
-  const query = `SELECT address FROM ${TABLE_ACCOUNTS} ORDER BY health_factor ASC;`;
+  const query = `SELECT address FROM ${TABLE_ACCOUNTS} ORDER BY health_factor DESC;`;
   const { rows: accountsArr } = await db.query(query);
+  console.log(accountsArr.length);
   return accountsArr;
 };
 const getHealthFactorForAccounts = async _batchOfAccounts => {
