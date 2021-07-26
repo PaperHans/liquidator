@@ -13,6 +13,10 @@
     "adder": "node index.js addressAdder",
     "liquidations": "node index.js liquidationListener",
     "updateHealthFactors": "node index.js updateHealthFactors",
+    "updateHealthFactorsTop": "node index.js updateHealthFactorsTop",
+    "updateHealthFactorsBottom": "node index.js updateHealthFactorsBottom",
+    "loopHealthTop": "python3 src/looperHealthTop.py",
+    "loopHealthBottom": "python3 src/looperHealthBottom.py",
     "loadFromCsv": "node index.js loadFromCsv",
     "healthListen": "node index.js dbHealthUpdateListener"
   },

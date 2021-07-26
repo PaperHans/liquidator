@@ -35,17 +35,19 @@ const init = async () => {
             event.event === 'Borrow' ||
             event.event === 'Deposit'
         ) {
-            //console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
+            console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
             // does the user exist? if not add them
             const { rows } = await db.query(searchUserQuery(TABLE_ACCOUNTS,event.returnValues.onBehalfOf.toLowerCase()));
-            //console.log(rows[0].exists)
+            console.log(rows[0].exists)
             if ( rows[0].exists === 0 ) {
+                // get user health factor
+                userData = (await contract.methods.getUserAccountData(event.returnValues.onBehalfOf.toLowerCase()).call());
+                healthy = userData.healthFactor;
+                console.log(toNumber(healthy))
                 // add user with health factor
-                try {
-                    const res = await db.query(insertUserQuery(TABLE_ACCOUNTS,event.returnValues.onBehalfOf.toLowerCase(),'1010000000000000000'));
-                    console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
-                } catch (err) {
-                    console.log(err)
+                if ( toNumber(healthy) < 2000000000000000000 ) {
+                    const res = await db.query(insertUserQuery(TABLE_ACCOUNTS,event.returnValues.onBehalfOf.toLowerCase(),healthy));
+                    console.log(res)
                 }
             }
         }
@@ -53,17 +55,19 @@ const init = async () => {
             event.event === 'Repay' ||
             event.event === 'Withdraw'
         ) {
-            //console.log(event.returnValues.user.toLowerCase()," ",event.event);
+            console.log(event.returnValues.user.toLowerCase()," ",event.event);
             // does the user exist? if not add them
             const { rows } = await db.query(searchUserQuery(TABLE_ACCOUNTS,event.returnValues.user.toLowerCase()));
-            //console.log(rows[0].exists)
+            console.log(rows[0].exists)
             if ( rows[0].exists === 0 ) {
+                // get user health factor
+                userData = (await contract.methods.getUserAccountData(event.returnValues.user.toLowerCase()).call());
+                healthy = userData.healthFactor;
+                console.log(toNumber(healthy))
                 // add user with health factor
-                try {
-                    const res = await db.query(insertUserQuery(TABLE_ACCOUNTS,event.returnValues.user.toLowerCase(),'1010000000000000000'));
-                    console.log(event.returnValues.user.toLowerCase()," ",event.event);
-                } catch (err) {
-                    console.log(err)
+                if ( toNumber(healthy) < 2000000000000000000 ) {
+                    const res = await db.query(insertUserQuery(TABLE_ACCOUNTS,event.returnValues.user.toLowerCase(),healthy));
+                    console.log(res)
                 }
             }
         }

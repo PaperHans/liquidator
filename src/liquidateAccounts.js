@@ -186,7 +186,17 @@ export const liquidateSingleAccount2 = async (_accountObj, _tokenInfo) => {
       const actualEstGas = expectedMaxGasUsed * 0.9;
 
       // estimate the txn cost in gas
-      const gasPriceGwei = gasPriceSafeLow + 5;
+      let gasPriceGwei;
+      if (debtToCoverInMaticProfit >= 500000000000000000 && debtToCoverInMaticProfit <= 5000000000000000000) {
+        gasPriceGwei = gasPriceFastest * 4;
+      }
+      if (debtToCoverInMaticProfit > 5000000000000000000) {
+        gasPriceGwei = gasPriceFast * 2;
+      }
+      if (debtToCoverInMaticProfit < 500000000000000000) {
+        gasPriceGwei = gasPriceSafeLow + 3;
+      }
+      
       const gasPriceInWei = 1000000000 * gasPriceGwei;
       const estTxnCost = actualEstGas * gasPriceInWei;
       const estTxnCostInMatic = estTxnCost / 1e18;
