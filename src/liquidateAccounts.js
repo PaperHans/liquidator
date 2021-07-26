@@ -68,7 +68,7 @@ const rankByEthAmt = _accountWithReserveData => {
   for (let idx = 0; idx < tokenKeys.length; idx += 1) {
     const tokenName = tokenKeys[idx];
     // only add the token to the obj if it has > 0 eth in it 0.000005
-    if (acctObj.tokens[tokenName].collateralInEth > 0.000002 || acctObj.tokens[tokenName].debtInEth > 0.000002) {
+    if (acctObj.tokens[tokenName].collateralInEth > 0.0001 || acctObj.tokens[tokenName].debtInEth > 0.0001) {
       newAcctObj.tokens[tokenName] = acctObj.tokens[tokenName];
       // get the highest debt token amount and address
       if (acctObj.tokens[tokenName].debtInEth > highestEthDebtAmt) {
@@ -187,14 +187,17 @@ export const liquidateSingleAccount2 = async (_accountObj, _tokenInfo) => {
 
       // estimate the txn cost in gas
       let gasPriceGwei;
-      if (debtToCoverInMaticProfit >= 500000000000000000 && debtToCoverInMaticProfit <= 5000000000000000000) {
-        gasPriceGwei = gasPriceFastest * 4;
+      if (debtToCoverInMaticProfit >= 500000000000000000 && debtToCoverInMaticProfit <= 50000000000000000000) {
+        gasPriceGwei = gasPriceFast * 4;
       }
-      if (debtToCoverInMaticProfit > 5000000000000000000) {
-        gasPriceGwei = gasPriceFast * 2;
+      if (debtToCoverInMaticProfit > 50000000000000000000 && debtToCoverInMaticProfit <= 100000000000000000000) {
+        gasPriceGwei = gasPriceFastest * 100;
+      }
+      if (debtToCoverInMaticProfit > 100000000000000000000) {
+        gasPriceGwei = gasPriceFastest * 200;
       }
       if (debtToCoverInMaticProfit < 500000000000000000) {
-        gasPriceGwei = gasPriceSafeLow + 3;
+        gasPriceGwei = gasPriceStandard + 5;
       }
       
       const gasPriceInWei = 1000000000 * gasPriceGwei;
