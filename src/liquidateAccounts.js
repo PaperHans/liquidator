@@ -100,7 +100,7 @@ const rankByEthAmt = _accountWithReserveData => {
     console.log('were liquidatable', newAcctObj)
   } else {
     // TODO mark for deletion
-    console.log('no tokens, removing from database')
+    //console.log('no tokens, removing from database')
   }
 
   // go thru each account, get the highest debt amt by token per acct, then compare the max debt per token per acct

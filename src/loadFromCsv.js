@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'fs';
 
 import db, { pgDb } from './db';
-const { TABLE_ACCOUNTS } = process.env;
+const { TABLE_USER_BALANCES } = process.env;
 
 let allAddedAddresses = [];
 let allAddresses = [];
@@ -57,7 +57,7 @@ const formatValuesForQuery = rows => {
 // const insertAddressRow = async row => {
 //   const [address] = row.split(',');
 //   if (address.includes('0x') && address !== '0x0000000000000000000000000000000000000000') {
-//     const query = `INSERT INTO ${TABLE_ACCOUNTS} (address) VALUES ('${address}') ON DUPLICATE KEY UPDATE;`;
+//     const query = `INSERT INTO ${TABLE_BALANCES} (address) VALUES ('${address}') ON DUPLICATE KEY UPDATE;`;
 //     await sendQuery(query, null);
 //   }
 // };
@@ -93,7 +93,7 @@ const processFile2 = filePath => readFileSync(filePath, 'utf8', async (error, te
     for (let idx = 0; idx < batchCt; idx += 1) {
       // const row = mungedCsvRows[idx];
       const listUsers = mungedCsvRows.slice(idx * batchSize, (idx + 1) * batchSize);
-      const query = buildMultiInsertQuery(TABLE_ACCOUNTS, 'address', listUsers);
+      const query = buildMultiInsertQuery(TABLE_USER_BALANCES, 'address', listUsers);
       await sendQuery(query);
     }
 
@@ -101,7 +101,7 @@ const processFile2 = filePath => readFileSync(filePath, 'utf8', async (error, te
 });
 
 const getDbRows = async () => {
-  const query = `SELECT * FROM accounts;`;
+  const query = `SELECT * FROM user_balances;`;
   const dbRows = await db.query(query);
   const addressesArr = dbRows.rows.map(row => row.address);
   return addressesArr;
@@ -129,21 +129,21 @@ const processFile = async _rawFileContent => {
     const batchCt = Math.floor(rowCt / batchSize) + 1;
     for (let idx = 0; idx < addedQuotes.length; idx += 1) {
       const row = addedQuotes[idx];
-      // const query = buildMultiInsertQuery(TABLE_ACCOUNTS, 'address', listUsers);
-      const query = `INSERT INTO accounts (address) VALUES ${row};`;
+      // const query = buildMultiInsertQuery(TABLE_USER_BALANCES, 'address', listUsers);
+      const query = `INSERT INTO user_balances (address) VALUES ${row};`;
       await sendQuery(query);
     }
     console.log('done')
   }
 };
 const base = './src/data';
-const main = filesArr => {
+const main = async filesArr => {
   for (let idx = 0; idx < filesArr.length; idx += 1) {
     const filePath = filesArr[idx];
     console.log('filePath', filesArr.length, idx)
     const rawFileContent = readFileSync(filePath, 'utf8');
-    processFile(rawFileContent);
-    return
+    await processFile(rawFileContent);
+    
   }
 };
 const filesArr = readdirSync(base);

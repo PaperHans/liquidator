@@ -11,8 +11,9 @@
     "analyze-events": "node index.js eventAnalyzer",
     "query": "node index.js testQuery",
     "adder": "node index.js addressAdder",
+    "chainAdder": "node index.js chainLinkAdder",
     "liquidations": "node index.js liquidationListener",
-    "updateHealthFactors": "node index.js updateHealthFactors",
+    "updateBalances": "node index.js updateUserBalances",
     "updateHealthFactorsTop": "node index.js updateHealthFactorsTop",
     "updateHealthFactorsBottom": "node index.js updateHealthFactorsBottom",
     "loopHealthTop": "python3 src/looperHealthTop.py",
@@ -36,6 +37,7 @@
     "node-fetch": "^2.6.1",
     "pg": "^8.6.0",
     "pg-listen": "^1.7.0",
-    "web3": "^1.3.5"
+    "web3": "^1.3.5",
+    "web3-providers-ws": "^1.4.0"
   }
 }
