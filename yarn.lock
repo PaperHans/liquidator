@@ -5066,7 +5066,7 @@ web3-providers-ipc@1.4.0:
     underscore "1.12.1"
     web3-core-helpers "1.4.0"
 
-web3-providers-ws@1.4.0:
+web3-providers-ws@1.4.0, web3-providers-ws@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/web3-providers-ws/-/web3-providers-ws-1.4.0.tgz#a4db03fc865a73db62bc15c5da37f930517cfe08"
   integrity sha512-E5XfF58RLXuCtGiMSXxXEtjceCfPli+I4MDYCKx/J/bDJ6qvLUM2OnnGEmE7pq1Z03h0xh1ZezaB/qoweK3ZIQ==

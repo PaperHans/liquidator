@@ -19,16 +19,16 @@ export const getContract = (web3Instance, abi, address) => {
  * @param {*} contractsObj - contains { abi (obj), address (str) } for all contracts
  * @returns 
  */
-// export const getContracts = async (web3Instance, contractsObj) => {
-//   const contractsArr = [];
-//   for (const contractName of Object.keys(contractsObj)) {
-//     const { abi, address } = contractsObj[contractName];
-//     const contract = await getContract(web3Instance, abi, address);
-//     contractsObj[contractName].contract = contract;
-//     contractsArr.push({ key: contractName, ...contractsObj[contractName] });
-//   }
-//   return { contractsArr, contractsObj };
-// };
+export const getContracts = async (web3Instance, contractsObj) => {
+  const contractsArr = [];
+  for (const contractName of Object.keys(contractsObj)) {
+    const { abi, address } = contractsObj[contractName];
+    const contract = await getContract(web3Instance, abi, address);
+    contractsObj[contractName].contract = contract;
+    contractsArr.push({ key: contractName, ...contractsObj[contractName] });
+  }
+  return { contractsArr, contractsObj };
+};
 
 export const closeWeb3 = web3Instance => {
   console.log('Closing web3 connection')

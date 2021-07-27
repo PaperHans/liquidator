@@ -54,6 +54,16 @@ export const insertUserQuery = (tableName, userName, healthFactor) => {
   return query;
 };
 
+export const updatePriceQuery = (tableName, asset, price) => {
+  const query = `UPDATE ${tableName} SET eth_price = ${price}, last_updated = now() WHERE asset = '${asset}';`;
+  return query;
+};
+
+export const insertUserQuery2 = (tableName, userName) => {
+  const query = `INSERT INTO ${tableName} (address) values ('${userName}');`;
+  return query;
+};
+
 export const createTable = () => {
   let query = `
     CREATE TABLE borrows (
@@ -91,4 +101,15 @@ export const createTable = () => {
       dtAdded TIMESTAMPTZ DEFAULT Now()
     );
   `;
+};
+
+export const createTable2 = () => {
+  let query;
+  query = `
+  CREATE TABLE eth_Prices (
+    asset varchar(8) UNIQUE,
+    eth_price DECIMAL(38,0) DEFAULT 1,
+    last_updated TIMESTAMPTZ DEFAULT Now()
+  );
+`;     
 };
