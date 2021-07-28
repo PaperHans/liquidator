@@ -19,7 +19,8 @@
     "loopHealthTop": "python3 src/looperHealthTop.py",
     "loopHealthBottom": "python3 src/looperHealthBottom.py",
     "loadFromCsv": "node index.js loadFromCsv",
-    "healthListen": "node index.js dbHealthUpdateListener"
+    "healthListen": "node index.js dbHealthUpdateListener",
+    "viewFinder": "node index.js viewFinder"
   },
   "author": "",
   "license": "ISC",

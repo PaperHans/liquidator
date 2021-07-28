@@ -87,7 +87,7 @@ const batchUpdateHealthFactor = async _acctHealthFactorArr => {
                           ${queryValues}
                       ) AS v ( address, am_dai, am_usdc, am_weth, am_wbtc, am_aave, am_wmatic, am_usdt, debt_dai, debt_usdc, debt_weth, debt_wbtc, debt_aave, debt_wmatic, debt_usdt, last_updated )
                     WHERE  b.address = v.address;`;
-    console.log("query: ",query);
+    //console.log("query: ",query);
     try {
       await db.query(query);
     } catch (err) {
