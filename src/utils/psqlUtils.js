@@ -55,7 +55,7 @@ export const insertUserQuery = (tableName, userName, healthFactor) => {
 };
 
 export const updatePriceQuery = (tableName, asset, price) => {
-  const query = `UPDATE ${tableName} SET eth_price = ${price}, last_updated = now() WHERE asset = '${asset}';`;
+  const query = `UPDATE ${tableName} SET ${asset} = ${price} WHERE type = 'prices';`;
   return query;
 };
 
