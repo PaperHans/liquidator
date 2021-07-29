@@ -1,10 +1,10 @@
 // modules
 import Web3 from 'web3';
-import db from "./db";
-import { updateValueQuery, searchUserQuery, insertUserQuery } from './utils/psqlUtils';
+import db from "../db";
+import { updateValueQuery, searchUserQuery, insertUserQuery } from '../utils/psqlUtils';
 import _, { toNumber, shuffle } from 'lodash';
-import { closeWeb3, getContract } from './utils/web3Utils';
-import { address as aaveLendingPoolAddress, abi as aaveLendingPoolAbi } from './abis/aave/general/aaveLendingPool';
+import { closeWeb3, getContract } from '../utils/web3Utils';
+import { address as aaveLendingPoolAddress, abi as aaveLendingPoolAbi } from '../abis/aave/general/aaveLendingPool';
 
 // init
 const {

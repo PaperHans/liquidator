@@ -20,7 +20,7 @@
     "loopHealthBottom": "python3 src/looperHealthBottom.py",
     "loadFromCsv": "node index.js loadFromCsv",
     "healthListen": "node index.js dbHealthUpdateListener",
-    "viewFinder": "node index.js viewFinder"
+    "blockLiquidator": "node index.js blockLiquidator"
   },
   "author": "",
   "license": "ISC",
