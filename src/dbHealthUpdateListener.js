@@ -2,9 +2,9 @@
 
 // modules
 // local imports
-import { getChainLinkPrices, getReservesForAccounts } from './contractReserves';
+import { getChainLinkPrices } from './contractReserves';
 import { pgDb } from './db';
-import { liquidateAccounts, liquidateSingleAccount2 } from './liquidateAccounts';
+import { liquidateSingleAccount } from './liquidateAccount';
 
 /**
  * main
@@ -15,10 +15,10 @@ const main = async () => {
     listener.on('notification', async ({ payload }) => {
       const res = JSON.parse(payload);
       const tokenInfo = await getChainLinkPrices();
-      // const responseFromLiquidationIdkWhatThisIs = await liquidateAccounts([{ address: res.address }], tokenInfo)
-      const responseFromLiquidationIdkWhatThisIs = await liquidateSingleAccount2({ address: res.address }, tokenInfo)
+      const responseFromLiquidationIdkWhatThisIs = await liquidateSingleAccount({ address: res.address }, tokenInfo)
       if (!!responseFromLiquidationIdkWhatThisIs) {
         // TODO delete user in db
+        // 7/28 not sure if we still need to do this
       }
       console.log('responseFromLiquidationIdkWhatThisIs', responseFromLiquidationIdkWhatThisIs)
     })

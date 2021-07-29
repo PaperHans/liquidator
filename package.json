@@ -6,7 +6,7 @@
   "scripts": {
     "listen": "node index.js chainlinkPriceListener",
     "reserves": "node index.js contractReserves",
-    "singleLoop": "node index.js liquidateAccounts",
+    "singleLoop": "node index.js liquidateAccount",
     "loop": "python3 src/looper.py",
     "analyze-events": "node index.js eventAnalyzer",
     "query": "node index.js testQuery",
