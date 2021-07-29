@@ -13,7 +13,8 @@ import {
   address as flashAndLiquidateAddress,
   abi     as flashAndLiquidateAbi,
 } from './abis/custom/flashAndLiquidate';
-import { getReservesForAccount } from './contractReserves';
+import { tokenInfo } from './constants/aaveConstants';
+import _ from 'lodash';
 // constants
 const { WEB3_WALLET, WEB3_MNEMONIC, CHAINSTACK_HTTPS, CHAINSTACK_WSS, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
@@ -34,10 +35,9 @@ const getGasPriceFxn = async () => {
  * the sorting hat
  * @param {*} _accountWithReserveData 
  */
-const rankByEthAmt = _accountWithReserveData => {
-  const acctObj = _accountWithReserveData;
-  const newAcctObj = { ...acctObj, tokens: {} };
-  const tokenKeys = Object.keys(acctObj.tokens);
+const rankByEthAmt = acctObj => {
+  const newAcctObj = _.cloneDeep(acctObj);;
+  const tokenKeys = Object.keys(tokenInfo);
   let totalEthDebtForAcct = 0;
   let totalEthCollatForAcct = 0;
   let highestEthDebtAmt = 0;
@@ -46,54 +46,53 @@ const rankByEthAmt = _accountWithReserveData => {
   let highestCollatAmt = 0;
   let highestDebtTokenAddress = '';
   let highestCollatTokenAddress = '';
-  acctObj.tokens.usdt.collateralInEth = 0;
+  // set usdt collateral to 0 because aave doesnt allow liquidating it
+  acctObj.am_usdt_eth = 0;
   // filter out any tokens that are not used for debt or collateral
   for (let idx = 0; idx < tokenKeys.length; idx += 1) {
     const tokenName = tokenKeys[idx];
-    // only add the token to the obj if it has > 0 eth in it 0.000005
-    if (acctObj.tokens[tokenName].collateralInEth > 0.0001 || acctObj.tokens[tokenName].debtInEth > 0.0001) {
-      newAcctObj.tokens[tokenName] = acctObj.tokens[tokenName];
-      // get the highest debt token amount and address
-      if (acctObj.tokens[tokenName].debtInEth > highestEthDebtAmt) {
-        newAcctObj.reserveAddress = acctObj.tokens[tokenName].tokenAddress;
-        highestEthDebtAmt = acctObj.tokens[tokenName].debtInEth;
-        highestDebtAmt = acctObj.tokens[tokenName].debt;
-        highestDebtTokenAddress = tokenName;
-      }
-      if (acctObj.tokens[tokenName].collateralInEth > highestEthCollatAmt) {
-        newAcctObj.collateralAddress = acctObj.tokens[tokenName].tokenAddress;
-        highestEthCollatAmt = acctObj.tokens[tokenName].collateralInEth;
-        highestCollatAmt = acctObj.tokens[tokenName].collateral;
-        highestCollatTokenAddress = tokenName;
-      }
-      totalEthDebtForAcct += acctObj.tokens[tokenName].debtInEth;
-      totalEthCollatForAcct += acctObj.tokens[tokenName].collateralInEth;
+    // use the token names to get the keys
+    const tokenCollatKey = `am_${tokenName}_eth`;
+    const tokenDebtKey = `debt_${tokenName}_eth`;
+    const tokenPriceKey = `${tokenName}_price`;
+    // get the amount in eth, returned from the postgres view-table
+    const collatInEth = acctObj[tokenCollatKey];
+    const debtInEth = acctObj[tokenDebtKey];
+    const tokenPriceInEth = acctObj[tokenPriceKey];
+    // get the highest debt token amount and address
+    if (debtInEth > highestEthDebtAmt) {
+      newAcctObj.reserveAddress = tokenInfo[tokenName].tokenAddress;
+      highestEthDebtAmt = debtInEth;
+      highestDebtAmt = highestEthDebtAmt / tokenPriceInEth;
+      highestDebtTokenAddress = tokenInfo[tokenName].tokenAddress;
     }
+    // get the highest collateral token amount and address
+    if (collatInEth > highestEthCollatAmt) {
+      newAcctObj.collateralAddress = tokenInfo[tokenName].tokenAddress;
+      highestEthCollatAmt = collatInEth;
+      highestCollatAmt = highestEthCollatAmt / tokenPriceInEth;
+      highestCollatTokenAddress = tokenInfo[tokenName].tokenAddress;
+    }
+    totalEthDebtForAcct += debtInEth;
+    totalEthCollatForAcct += collatInEth;
   }
 
-  const hasDebtAndCollat = totalEthDebtForAcct > 0 && totalEthCollatForAcct > 0;
-  if (Object.keys(newAcctObj.tokens).length > 0 && hasDebtAndCollat) {
-    // calculate the debt to cover
-    // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
-    const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
-    const ratio = debtToCoverEth / highestEthDebtAmt;
-    const trueLiquidatableAmt = Math.floor(ratio * highestDebtAmt);
-    newAcctObj.debtToCover = trueLiquidatableAmt;
-    newAcctObj.debtToCoverEth = debtToCoverEth;
-    console.log('were liquidatable', newAcctObj)
-  } else {
-    // TODO mark for deletion
-    // 7/28 not sure if still doing this in this loop
-    //console.log('no tokens, removing from database')
-  }
+  // calculate the debt to cover
+  // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
+  const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
+  const ratio = debtToCoverEth / highestEthDebtAmt;
+  const trueLiquidatableAmt = Math.floor(ratio * highestDebtAmt);
+  newAcctObj.debtToCover = trueLiquidatableAmt;
+  newAcctObj.debtToCoverEth = debtToCoverEth;
+  console.log('were liquidatable', newAcctObj)
   return newAcctObj;
 };
 
-export const liquidateSingleAccount = async (_accountObj, _tokenInfo) => {
-  const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
-  const updatedAcct = rankByEthAmt(accountWithReserveData);
-  // TODO set a thresh and mark this user for deletion
-  if (Object.keys(updatedAcct.tokens).length === 0) return 'no tokens';
+export const liquidateSingleAccount = async _accountObj => {
+  // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
+  // const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
+  // const updatedAcct = rankByEthAmt(accountWithReserveData);
+  const updatedAcct = rankByEthAmt(_accountObj);
   const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth } = updatedAcct;
   const receiveATokens = false;
   if (!collateralAddress  && typeof collateralAddress  !== typeof 'a' ) throw Error(`ERROR: Issue with collateralAddress: ${ collateralAddress}  typeof:${ typeof collateralAddress}`);
@@ -106,16 +105,16 @@ export const liquidateSingleAccount = async (_accountObj, _tokenInfo) => {
     return;
   }
   try {
-    const decimalsMatic = _tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
-    const priceEthPerMatic = _tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
+    const decimalsMatic = tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
+    const priceEthPerMatic = tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
     const priceEthPerMaticReal = priceEthPerMatic / (10 ** decimalsMatic);
     const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
     const debtToCoverInMatic = debtToCoverInMaticReal * (10 ** decimalsMatic);
     console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMatic', debtToCoverInMatic)
 
     // uses debtToCoverInMatic to calculate a gasPrice based on estimated profit and estimated gas used
-    const collatTokenKey = Object.keys(_tokenInfo).filter(key => _tokenInfo[key].tokenAddress === collateralAddress)[0];
-    const { reward: collatBonus } = _tokenInfo[collatTokenKey];
+    const collatTokenKey = Object.keys(tokenInfo).filter(key => tokenInfo[key].tokenAddress === collateralAddress)[0];
+    const { reward: collatBonus } = tokenInfo[collatTokenKey];
     
     // create function for is it profitable or not?
     flashAndLiquidateContract.methods.FlashAndLiquidate(

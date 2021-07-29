@@ -2,6 +2,7 @@
 import Web3 from 'web3';
 // local imports
 import db from './db';
+import { liquidateSingleAccount } from './liquidateAccount';
 import { buildInsertQuery } from './utils/psqlUtils';
 import { closeWeb3, getContracts } from './utils/web3Utils';
 // constants
@@ -45,17 +46,24 @@ const query = `
 
 /**
  * main
+ * listens for new polygon blocks
+ * finds any liquidatable accounts on aave
+ * attempts to liquidate each account individually
  */
-const listen = async () => {
+const listenForNewBlocks = async () => {
 
   console.log(`Starting websocket\n`);
   web3.eth.subscribe('newBlockHeaders').on('data', async block => {
     console.log(`New MATIC block received. Block # ${block.number}`);
-    // go thru each contract, extract info, save to db
     try {
       const { rows } = await db.query(query);
       console.log(rows.length);
-      console.log('end');
+      for (let idx = 0; idx < rows.length; idx += 1) {
+        const liquidatableAccountObj = rows[idx];
+        const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj)
+        console.log('liquidation attempted!');
+      }
+      console.log('no error this block');
     } catch (err) {
       console.log('ERROR IN MAIN', err);
     }
@@ -64,7 +72,7 @@ const listen = async () => {
 
 // run the app
 try {
-  listen();
+  listenForNewBlocks();
 } catch (err) {
   console.log('\nERROR', err);
   closeWeb3(web3);
