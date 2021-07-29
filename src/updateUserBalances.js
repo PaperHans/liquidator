@@ -53,8 +53,25 @@ const getBalancesForAccounts = async _batchOfAccounts => {
       //console.log("Length: ",userBalanceArr.length);
       const userValues = _.chunk(userBalanceArr, 14)
       let mappedBalancesArr = [];
-      _batchOfAccounts.forEach((key, index) => mappedBalancesArr.push(`('${key}',${userValues[index].join(',')},now())`));
-      //console.log(mappedBalancesArr);
+      let accountsToRemove = [];
+      _batchOfAccounts.forEach((key, index) => {
+        // console.log(userValues[index]);
+        // console.log(userValues[index].slice(0,6).reduce((a, b) => toNumber(a) + toNumber(b), 0));
+        // console.log(userValues[index].slice(7,13).reduce((a, b) => toNumber(a) + toNumber(b), 0));
+        if (userValues[index].slice(0,7).reduce((a, b) => toNumber(a) + toNumber(b), 0) === 0 || userValues[index].slice(7,14).reduce((a, b) => toNumber(a) + toNumber(b), 0) === 0) {
+          // console.log(userValues[index].slice(0,7));
+          // console.log(userValues[index].slice(7,14));
+          // console.log(key);
+          accountsToRemove.push(key);
+        }
+        else {
+          mappedBalancesArr.push(`('${key}',${userValues[index].join(',')},now())`)
+        }
+      });
+      if (accountsToRemove.length > 0) {
+        console.log('\n\nremoving accounts')
+        await removeAccounts(accountsToRemove);
+      }
       return mappedBalancesArr;
     } catch (err) {
       console.log('error in get Balances For Accounts', err);
@@ -62,7 +79,7 @@ const getBalancesForAccounts = async _batchOfAccounts => {
   }
 };
 const removeAccounts = async _accountsToRemove => {
-  const query = buildMultiDeleteQuery('accounts', 'address', _accountsToRemove);
+  const query = buildMultiDeleteQuery('user_balances', 'address', _accountsToRemove);
   console.log('query', query)
   try {
     const res = await db.query(query);

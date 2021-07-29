@@ -14,7 +14,7 @@ export const buildInsertQuery = (keysArr, tableName, payloadObj) => {
 };
 
 export const buildMultiDeleteQuery = (tableName, columnName, accountsToDelete) => {
-  const newAccountsToDelete = accountsToDelete.map(addr => `'${addr.address || addr.accountAddress}'`);
+  const newAccountsToDelete = accountsToDelete.map(addr => `'${addr}'`);
   const tupleOfMatches = newAccountsToDelete.join(',');
   const query = `DELETE FROM ${tableName} WHERE ${columnName} IN (${tupleOfMatches}) RETURNING ${columnName};`;
   return query

@@ -13,8 +13,13 @@ import {
   address as flashAndLiquidateAddress,
   abi     as flashAndLiquidateAbi,
 } from './abis/custom/flashAndLiquidate';
+import { 
+  address as aaveLendingPoolAddress, 
+  abi as aaveLendingPoolAbi 
+} from './abis/aave/general/aaveLendingPool';
 import { tokenInfo } from './constants/aaveConstants';
 import _ from 'lodash';
+import BigNumber from 'bignumber.js';
 // constants
 const { WEB3_WALLET, WEB3_MNEMONIC, CHAINSTACK_HTTPS, CHAINSTACK_WSS, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
@@ -24,6 +29,7 @@ let provider = new HDWalletProvider({
 const setUpWeb3 = () => new Web3(provider);
 let web3 = setUpWeb3();
 const flashAndLiquidateContract = getContract(web3, flashAndLiquidateAbi, flashAndLiquidateAddress);
+const aaveContract = getContract(web3, aaveLendingPoolAbi, aaveLendingPoolAddress);
 
 // helper fxns
 const getGasPriceFxn = async () => {
@@ -60,18 +66,21 @@ const rankByEthAmt = acctObj => {
     const debtInEth = acctObj[tokenDebtKey];
     const tokenPriceInEth = acctObj[tokenPriceKey];
     // get the highest debt token amount and address
-    if (debtInEth > highestEthDebtAmt) {
+    if (debtInEth >= highestEthDebtAmt) {
       newAcctObj.reserveAddress = tokenInfo[tokenName].tokenAddress;
       highestEthDebtAmt = debtInEth;
       highestDebtAmt = highestEthDebtAmt / tokenPriceInEth;
       highestDebtTokenAddress = tokenInfo[tokenName].tokenAddress;
+      newAcctObj.debtTokenName = tokenName;
+
     }
     // get the highest collateral token amount and address
-    if (collatInEth > highestEthCollatAmt) {
+    if (collatInEth >= highestEthCollatAmt) {
       newAcctObj.collateralAddress = tokenInfo[tokenName].tokenAddress;
       highestEthCollatAmt = collatInEth;
       highestCollatAmt = highestEthCollatAmt / tokenPriceInEth;
       highestCollatTokenAddress = tokenInfo[tokenName].tokenAddress;
+      newAcctObj.collatTokenName = tokenName;
     }
     totalEthDebtForAcct += debtInEth;
     totalEthCollatForAcct += collatInEth;
@@ -81,10 +90,13 @@ const rankByEthAmt = acctObj => {
   // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
   const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
   const ratio = debtToCoverEth / highestEthDebtAmt;
-  const trueLiquidatableAmt = Math.floor(ratio * highestDebtAmt);
-  newAcctObj.debtToCover = trueLiquidatableAmt;
+  //console.log("highestDebtAmt ",highestDebtAmt);
+  const trueLiquidatableAmt = ratio * highestDebtAmt;
+  //console.log("trueLiquidatableAmt ",trueLiquidatableAmt);
+  newAcctObj.debtToCover = web3.utils.toBN(Math.floor(BigNumber(trueLiquidatableAmt * (10 ** tokenInfo[newAcctObj.debtTokenName].aaveDecimals))));
   newAcctObj.debtToCoverEth = debtToCoverEth;
-  console.log('were liquidatable', newAcctObj)
+  //console.log('were liquidatable', newAcctObj)
+  //console.log("newAcctObj.debtToCover ",`"${newAcctObj.debtToCover}"`);
   return newAcctObj;
 };
 
@@ -92,8 +104,30 @@ export const liquidateSingleAccount = async _accountObj => {
   // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
   // const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
   // const updatedAcct = rankByEthAmt(accountWithReserveData);
+
+  //check if user health factor below 1, if not skip
+  let healthFactorCheck;
+  try {
+    healthFactorCheck = await aaveContract.methods.getUserAccountData(_accountObj.address).call();
+    console.log
+  } catch (err) {
+    console.log('error in get Health Factor For Account', err);
+  }
+  let healthy;
+  healthy = healthFactorCheck.healthFactor;
+  // if they have no collateral, print
+  if(healthy === '115792089237316195423570985008687907853269984665640564039457584007913129639935') {
+    console.log("Not unhealthy!");
+    return;
+  } 
+  // else get the printable healthFactor value
+  if (healthy > 1000000000000000000) {
+    console.log("Not unhealthy!");
+    return;
+  }
+
   const updatedAcct = rankByEthAmt(_accountObj);
-  const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth } = updatedAcct;
+  const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth, debtTokenName } = updatedAcct;
   const receiveATokens = false;
   if (!collateralAddress  && typeof collateralAddress  !== typeof 'a' ) throw Error(`ERROR: Issue with collateralAddress: ${ collateralAddress}  typeof:${ typeof collateralAddress}`);
   if (!reserveAddress     && typeof reserveAddress     !== typeof 'a' ) throw Error(`ERROR: Issue with reserveAddress: ${    reserveAddress}  typeof:${    typeof reserveAddress}`);
@@ -106,31 +140,39 @@ export const liquidateSingleAccount = async _accountObj => {
   }
   try {
     const decimalsMatic = tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
-    const priceEthPerMatic = tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
-    const priceEthPerMaticReal = priceEthPerMatic / (10 ** decimalsMatic);
+    //const priceEthPerMatic = tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
+    const priceEthPerMaticReal = _accountObj.wmatic_price/1
     const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
-    const debtToCoverInMatic = debtToCoverInMaticReal * (10 ** decimalsMatic);
-    console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMatic', debtToCoverInMatic)
+    const debtToCoverInMaticWei = debtToCoverInMaticReal * (10 ** decimalsMatic);
+    console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMaticWei', debtToCoverInMaticWei)
 
-    // uses debtToCoverInMatic to calculate a gasPrice based on estimated profit and estimated gas used
+    // uses debtToCoverInMaticWei to calculate a gasPrice based on estimated profit and estimated gas used
     const collatTokenKey = Object.keys(tokenInfo).filter(key => tokenInfo[key].tokenAddress === collateralAddress)[0];
     const { reward: collatBonus } = tokenInfo[collatTokenKey];
-    
+    // console.log({
+    //   "collateralAddress": collateralAddress,
+    //   "reserveAddress": reserveAddress,
+    //   "addressToLiquidate": addressToLiquidate,
+    //   "debtToCover": `${debtToCover}`,
+    //   "receiveATokens": receiveATokens
+
+    // });
     // create function for is it profitable or not?
-    flashAndLiquidateContract.methods.FlashAndLiquidate(
+    await flashAndLiquidateContract.methods.FlashAndLiquidate(
       collateralAddress, 
       reserveAddress, 
       addressToLiquidate, 
       `${debtToCover}`, 
-      receiveATokens,
+      receiveATokens
     ).estimateGas({ from: WEB3_WALLET }, async (err, expectedMaxGasUsed) => {
       // calculate the debt to cover in matic
-      const debtToCoverInMaticProfit = debtToCoverInMatic * collatBonus;
+      const debtToCoverInMaticProfit = debtToCoverInMaticWei * collatBonus;
 
       // get the gas price from polygonscan
       const { safeLow: gasPriceSafeLow, standard: gasPriceStandard, fast: gasPriceFast, fastest: gasPriceFastest } = await getGasPriceFxn();
 
       // get the estimated gas
+      //console.log("ExpectedGas ",expectedMaxGasUsed);
       const actualEstGas = expectedMaxGasUsed * 0.9;
 
       // estimate the txn cost in gas
@@ -171,6 +213,7 @@ export const liquidateSingleAccount = async _accountObj => {
             to: flashAndLiquidateAddress,
             data: encoded
           };
+          console.log("TXTXTX ",tx);
           web3.eth.sendTransaction(tx, function(err, receipt) {
             console.log('\n\n test tset test testt \n\n')
             console.log('\n\n response here\n',receipt, '\n\n end response\n')

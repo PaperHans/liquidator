@@ -39,7 +39,7 @@ const web3 = new Web3(new Web3.providers.WebsocketProvider(CHAINSTACK_WSS, optio
 
 const query = `
   SELECT * FROM healthy
-  WHERE health_factor <= 1.00005 AND
+  WHERE health_factor <= 1.0000005 AND
   (
     LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003
   );`;
@@ -61,7 +61,13 @@ const listenForNewBlocks = async () => {
       for (let idx = 0; idx < rows.length; idx += 1) {
         const liquidatableAccountObj = rows[idx];
         const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj)
-        console.log('liquidation attempted!');
+        console.log("liquidationResponse",liquidationResponse);
+        if (!liquidationResponse) {
+          console.log('liquidation NOT attempted!');
+        }
+        else {
+          console.log('liquidation attempted!');
+        }
       }
       console.log('no error this block');
     } catch (err) {

@@ -52,7 +52,7 @@ const init = async () => {
     contract.events.AnswerUpdated({},
       async (err, event) => {
         if (err) throw err;
-        console.log(event, ",,,", key);
+        //console.log(event, ",,,", key);
         try {
           const res = await db.query(updatePriceQuery(TABLE_ETH_PRICES, contractTokenId, toNumber(event.returnValues.current)));
           console.log(toNumber(event.returnValues.current), ' ', contractTokenId);
