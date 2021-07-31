@@ -9,12 +9,12 @@ const lowy = addy.toLowerCase()
 
 const query = `SELECT 
   *
-  FROM user_balances
-  WHERE address = '0x020d56e549db2ca35fac74118b28f159500701c0';`
-  // health_factor <= 1.0000005 AND
-  // (
-  // LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003
-  // );;
+  FROM healthy
+  WHERE health_factor <= 1.00005 AND
+  (
+  LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003);`;
+
+//`UPDATE price_data SET wbtc = 16922493550257000000 WHERE type = 'prices';`;
 
 //health_factor <= 1 ORDER BY health_factor ASC;
 

@@ -169,31 +169,34 @@ export const liquidateSingleAccount = async _accountObj => {
       const debtToCoverInMaticProfit = debtToCoverInMaticWei * collatBonus;
 
       // get the gas price from polygonscan
-      const { safeLow: gasPriceSafeLow, standard: gasPriceStandard, fast: gasPriceFast, fastest: gasPriceFastest } = await getGasPriceFxn();
+      // const { safeLow: gasPriceSafeLow, standard: gasPriceStandard, fast: gasPriceFast, fastest: gasPriceFastest } = await getGasPriceFxn();
 
       // get the estimated gas
       //console.log("ExpectedGas ",expectedMaxGasUsed);
       const actualEstGas = expectedMaxGasUsed * 0.9;
 
       // estimate the txn cost in gas
-      let gasPriceGwei;
-      if (debtToCoverInMaticProfit >= 500000000000000000 && debtToCoverInMaticProfit <= 50000000000000000000) {
-        gasPriceGwei = gasPriceFast * 4;
+      let gasPriceInWei;
+      if (debtToCoverInMaticProfit < 100000000000000000) { // less than 1
+        const willingToSpend = debtToCoverInMaticProfit * 0.5; 
+        gasPriceInWei = willingToSpend / actualEstGas; //$33
       }
-      if (debtToCoverInMaticProfit > 50000000000000000000 && debtToCoverInMaticProfit <= 100000000000000000000) {
-        gasPriceGwei = gasPriceFastest * 100;
+      if (debtToCoverInMaticProfit >= 100000000000000000 && debtToCoverInMaticProfit <= 10000000000000000000) { // 1 and 10 matic profit
+        const willingToSpend = debtToCoverInMaticProfit * 0.4; 
+        gasPriceInWei = willingToSpend / actualEstGas; //$33
       }
-      if (debtToCoverInMaticProfit > 100000000000000000000) {
-        gasPriceGwei = gasPriceFastest * 200;
+      if (debtToCoverInMaticProfit > 10000000000000000000 && debtToCoverInMaticProfit <= 100000000000000000000) { // between 10 and 100 matic profit
+        const willingToSpend = debtToCoverInMaticProfit * 0.35; 
+        gasPriceInWei = willingToSpend / actualEstGas; //$33
       }
-      if (debtToCoverInMaticProfit < 500000000000000000) {
-        gasPriceGwei = gasPriceStandard + 5;
+      if (debtToCoverInMaticProfit > 100000000000000000000) { // above 100 matic (30%)
+        const willingToSpend = debtToCoverInMaticProfit * 0.3; 
+        gasPriceInWei = willingToSpend / actualEstGas; //$33
       }
       
-      const gasPriceInWei = 1000000000 * gasPriceGwei;
       const estTxnCost = actualEstGas * gasPriceInWei;
       const estTxnCostInMatic = estTxnCost / 1e18;
-      console.log("gasUsed: ", actualEstGas, "with gasPriceInWei: ", gasPriceInWei, 'gwei', gasPriceGwei);
+      console.log("gasUsed: ", actualEstGas, "with gasPriceInWei: ", gasPriceInWei, 'gwei', gasPriceInWei / 1000000000);
       console.log("Profit: ", debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic);
 
       // if this is profitable, attempt to liquidate

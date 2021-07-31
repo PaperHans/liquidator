@@ -91,7 +91,7 @@ const init = async () => {
                     console.log(event.returnValues.user.toLowerCase()," ",event.event);
                 } catch (err) {
                     console.log(err)
-                    console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
+                    console.log(event.returnValues.user.toLowerCase()," ",event.event);
                 }
             }
         }
