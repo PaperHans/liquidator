@@ -19,7 +19,10 @@ import {
 } from './abis/aave/general/aaveLendingPool';
 import { tokenInfo } from './constants/aaveConstants';
 import _ from 'lodash';
+import ethUtils from 'ethereumjs-util';
+import abiTools from 'web3-eth-abi';
 import BigNumber from 'bignumber.js';
+import db from './db';
 // constants
 const { WEB3_WALLET, WEB3_MNEMONIC, CHAINSTACK_HTTPS, CHAINSTACK_WSS, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
@@ -100,31 +103,34 @@ const rankByEthAmt = acctObj => {
   return newAcctObj;
 };
 
-export const liquidateSingleAccount = async _accountObj => {
+export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
   // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
   // const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
   // const updatedAcct = rankByEthAmt(accountWithReserveData);
 
   //check if user health factor below 1, if not skip
-  let healthFactorCheck;
-  try {
-    healthFactorCheck = await aaveContract.methods.getUserAccountData(_accountObj.address).call();
-    console.log
-  } catch (err) {
-    console.log('error in get Health Factor For Account', err);
-  }
-  let healthy;
-  healthy = healthFactorCheck.healthFactor;
-  // if they have no collateral, print
-  if(healthy === '115792089237316195423570985008687907853269984665640564039457584007913129639935') {
-    console.log("Not unhealthy!");
-    return;
-  } 
-  // else get the printable healthFactor value
-  if (healthy > 1000000000000000000) {
-    console.log("Not unhealthy!");
-    return;
-  }
+  //console.log("BLOCK ",blockNumber);
+  //let blocky = blockNumber - 1;
+  //console.log("BLOCK-1 ",blocky);
+  // let healthFactorCheck;
+  // try {
+  //   healthFactorCheck = await aaveContract.methods.getUserAccountData(_accountObj.address).call({},blocky);
+  //   //console.log(healthFactorCheck);
+  // } catch (err) {
+  //   console.log('error in get Health Factor For Account', err);
+  // }
+  // let healthy;
+  // healthy = healthFactorCheck.healthFactor;
+  // // if they have no collateral, print
+  // if(healthy === '115792089237316195423570985008687907853269984665640564039457584007913129639935') {
+  //   console.log(`User ${_accountObj.address} is not unhealthy!`);
+  //   return;
+  // } 
+  // // else get the printable healthFactor value
+  // if (healthy > 1000000000000000000) {
+  //   console.log(`User ${_accountObj.address} is above 1 at ${healthy} on block ${blockNumber}!`);
+  //   return;
+  // }
 
   const updatedAcct = rankByEthAmt(_accountObj);
   const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth, debtTokenName } = updatedAcct;
@@ -173,53 +179,61 @@ export const liquidateSingleAccount = async _accountObj => {
 
       // get the estimated gas
       //console.log("ExpectedGas ",expectedMaxGasUsed);
-      const actualEstGas = expectedMaxGasUsed * 0.9;
+      const actualEstGas = Math.ceil(expectedMaxGasUsed * 0.8);
 
       // estimate the txn cost in gas
       let gasPriceInWei;
       if (debtToCoverInMaticProfit < 100000000000000000) { // less than 1
-        const willingToSpend = debtToCoverInMaticProfit * 0.5; 
-        gasPriceInWei = willingToSpend / actualEstGas; //$33
+        const willingToSpend = debtToCoverInMaticProfit * 0.75; 
+        gasPriceInWei = Math.max(Math.ceil(willingToSpend / actualEstGas),1000000000);
       }
       if (debtToCoverInMaticProfit >= 100000000000000000 && debtToCoverInMaticProfit <= 10000000000000000000) { // 1 and 10 matic profit
-        const willingToSpend = debtToCoverInMaticProfit * 0.4; 
-        gasPriceInWei = willingToSpend / actualEstGas; //$33
+        const willingToSpend = debtToCoverInMaticProfit * 0.5; 
+        gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
       }
       if (debtToCoverInMaticProfit > 10000000000000000000 && debtToCoverInMaticProfit <= 100000000000000000000) { // between 10 and 100 matic profit
-        const willingToSpend = debtToCoverInMaticProfit * 0.35; 
-        gasPriceInWei = willingToSpend / actualEstGas; //$33
+        const willingToSpend = debtToCoverInMaticProfit * 0.4; 
+        gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
       }
       if (debtToCoverInMaticProfit > 100000000000000000000) { // above 100 matic (30%)
         const willingToSpend = debtToCoverInMaticProfit * 0.3; 
-        gasPriceInWei = willingToSpend / actualEstGas; //$33
+        gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
       }
       
       const estTxnCost = actualEstGas * gasPriceInWei;
       const estTxnCostInMatic = estTxnCost / 1e18;
       console.log("gasUsed: ", actualEstGas, "with gasPriceInWei: ", gasPriceInWei, 'gwei', gasPriceInWei / 1000000000);
-      console.log("Profit: ", debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic);
+      console.log("Profit: ", debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic, " Address: ", addressToLiquidate, " on block ", blockNumber);
 
       // if this is profitable, attempt to liquidate
       if (debtToCoverInMaticProfit > estTxnCost) {
         const gasLimit = Math.round(expectedMaxGasUsed * 1.1);
         const gasPriceMax = 20000000000000;
-
+        const gasPricey = Math.min(gasPriceInWei, gasPriceMax);
         // create function for send transaction
-        web3.eth.getTransactionCount(WEB3_WALLET, function (err, noncey) {
+        web3.eth.getTransactionCount(WEB3_WALLET, (err, noncey) => {
+          const hashedData = ethUtils.keccak256(abiTools.encodeParameters(['string','string','string','string','uint'],[collateralAddress,reserveAddress,addressToLiquidate,`${debtToCover}`,noncey]));
+          const hashedFin = hashedData.toString('hex').substring(2);
+          // const search = await db.query(`SELECT (EXISTS (SELECT 1 FROM liquidation_log WHERE hash = '${hashedData}'))::int;`);
+          // if ( search[0].exists === 1 ) {
+          //   return;
+          // }
           const encoded = flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, receiveATokens).encodeABI();
           const tx = {
             from: WEB3_WALLET,
             gas: gasLimit,
-            gasPrice: Math.min(gasPriceInWei, gasPriceMax),
+            gasPrice: gasPricey,
             nonce: noncey,
             chain: 137,
             to: flashAndLiquidateAddress,
             data: encoded
           };
           console.log("TXTXTX ",tx);
-          web3.eth.sendTransaction(tx, function(err, receipt) {
+          web3.eth.sendTransaction(tx, async (err, receipt) => {
             console.log('\n\n test tset test testt \n\n')
+            console.log('error: ', err)
             console.log('\n\n response here\n',receipt, '\n\n end response\n')
+            const res = await db.query(`INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('${hashedFin}','${addressToLiquidate}','${collateralAddress}','${reserveAddress}',${debtToCover},${gasLimit},${gasPricey},${blockNumber},now());`);
             return receipt;
           })
         });
@@ -233,5 +247,6 @@ export const liquidateSingleAccount = async _accountObj => {
   } catch (err) {
     console.log('failed liquidation _accountObj', _accountObj);
     console.log('\nERROR IN THE LIQUIDATION CALL', err);
+    return;
   }
 };

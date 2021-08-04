@@ -4,7 +4,12 @@ import Web3 from 'web3';
 import db from './db';
 import { liquidateSingleAccount } from './liquidateAccount';
 import { buildInsertQuery } from './utils/psqlUtils';
-import { closeWeb3, getContracts } from './utils/web3Utils';
+import _, { toNumber } from 'lodash';
+import { closeWeb3, getContracts, getContract } from './utils/web3Utils';
+import {
+  address as healthFactorContractAddress,
+  abi     as healthFactorContractAbi,
+} from './abis/custom/healthFactor';
 // constants
 const { CHAINSTACK_WSS } = process.env;
 if (!CHAINSTACK_WSS) throw 'Please request .env file';
@@ -36,12 +41,18 @@ const options = {
 };
 
 const web3 = new Web3(new Web3.providers.WebsocketProvider(CHAINSTACK_WSS, options));
+const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
+const healthFactorContract = getContract(
+  web3,
+  healthFactorContractAbi,
+  healthFactorContractAddress,
+);
 
 const query = `
   SELECT * FROM healthy
-  WHERE health_factor <= 1.0000005 AND
+  WHERE health_factor <= 1.003 AND
   (
-    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003
+    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.0000008
   );`;
 
 /**
@@ -54,13 +65,39 @@ const listenForNewBlocks = async () => {
 
   console.log(`Starting websocket\n`);
   web3.eth.subscribe('newBlockHeaders').on('data', async block => {
-    console.log(`New MATIC block received. Block # ${block.number}`);
+    console.log(`\n\nNew MATIC block received. Block # ${block.number}`);
+    let idArr = [];
+    let toProceedWith = [];
+    let mappedHealthFactorArr;
     try {
       const { rows } = await db.query(query);
       console.log(rows.length);
-      for (let idx = 0; idx < rows.length; idx += 1) {
-        const liquidatableAccountObj = rows[idx];
-        const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj)
+      
+      rows.forEach(element => {
+        idArr.push(element.address);
+      });
+      //console.log(idArr);
+      for (let i = 0; i < 1; i += 1) {
+        try {
+          const healthFactorArr = await healthFactorContract.methods.healthFactors(idArr, token).call({},block.number);
+          // map health factors to accounts
+          mappedHealthFactorArr = healthFactorArr.map((hf, idx) => (`{ accountAddress: ${idArr[idx]}, healthFactor: ${toNumber(hf)} }`));
+          for (let i = 0; i < healthFactorArr.length; i++) {
+            if (toNumber(healthFactorArr[i]) < 1000000000001000000) {
+              toProceedWith.push(rows[i]);
+            }
+          }
+        } catch (err) {
+          console.log('error in get Health Factor For Accounts', err);
+          toProceedWith = rows;
+        }
+      }
+      console.log(mappedHealthFactorArr.join(','));
+      //console.log(toProceedWith);
+
+      for (let idx = 0; idx < toProceedWith.length; idx += 1) {
+        const liquidatableAccountObj = toProceedWith[idx];
+        const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj,block.number);
         console.log("liquidationResponse",liquidationResponse);
         if (!liquidationResponse) {
           console.log('liquidation NOT attempted!');

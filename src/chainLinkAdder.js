@@ -55,7 +55,7 @@ const init = async () => {
         //console.log(event, ",,,", key);
         try {
           const res = await db.query(updatePriceQuery(TABLE_ETH_PRICES, contractTokenId, toNumber(event.returnValues.current)));
-          console.log(toNumber(event.returnValues.current), ' ', contractTokenId);
+          console.log(toNumber(event.returnValues.current), ' ', contractTokenId, ' ', event.blockNumber);
         } catch (err) {
           console.log(err)
         }

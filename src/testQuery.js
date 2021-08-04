@@ -1,8 +1,50 @@
 import db from './db';
 import _ from 'lodash';
+// modules
+import Web3 from 'web3';
 
-// constants
-const { TABLE_ACCOUNTS } = process.env;
+// local
+import { getContract } from './utils/web3Utils'
+import { 
+  address as aaveLendingPoolAddress, 
+  abi as aaveLendingPoolAbi 
+} from './abis/aave/general/aaveLendingPool';
+
+// init
+const {
+  CHAINSTACK_HTTPS,
+  TABLE_ETH_PRICES,
+} = process.env;
+if (!CHAINSTACK_HTTPS) throw 'Please request .env file';
+const options = {
+  timeout: 30000, // ms
+
+  // Useful for credentialed urls, e.g: ws://username:password@localhost:8546
+  headers: {
+    authorization: 'Basic username:password',
+  },
+
+  clientConfig: {
+    // Useful if requests are large
+    maxReceivedFrameSize: 100000000,   // bytes - default: 1MiB
+    maxReceivedMessageSize: 100000000, // bytes - default: 8MiB
+
+    // Useful to keep a connection alive
+    keepalive: true,
+    keepaliveInterval: 60000, // ms
+  },
+
+  // Enable auto reconnection
+  reconnect: {
+    auto: true,
+    delay: 5000, // ms
+    maxAttempts: 5,
+    onTimeout: false,
+  },
+};
+
+const web3 = new Web3(new Web3.providers.HttpProvider(CHAINSTACK_HTTPS));
+const aaveContract = getContract(web3, aaveLendingPoolAbi, aaveLendingPoolAddress);
 
 const addy = "0x411A27de6175B411Bfd828A46200EC070Fbf6C15";
 const lowy = addy.toLowerCase()
@@ -10,11 +52,53 @@ const lowy = addy.toLowerCase()
 const query = `SELECT 
   *
   FROM healthy
-  WHERE health_factor <= 1.00005 AND
+  WHERE health_factor <= 1.0006 AND
   (
-  LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003);`;
+  LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.0000008
+  );`;
 
-//`UPDATE price_data SET wbtc = 16922493550257000000 WHERE type = 'prices';`;
+const query2 = `UPDATE price_data SET wmatic = 409534016563039 WHERE type = 'prices';`;
+
+const query1 = `SELECT * FROM healthy WHERE address = '8b9ab5e2e0b662cee076bf566fc9d27fdc6f94cf';`;
+
+const query3 =  `CREATE TABLE liquidation_log (
+       hash varchar(64) PRIMARY KEY,
+       address varchar(64),
+       collateral varchar(64),
+       reserve varchar(64),
+       debt_to_cover DECIMAL(38,0),
+       gas DECIMAL(38,0) DEFAULT 1000000000000000000,
+       gas_price DECIMAL(38,0) DEFAULT 1000000000000000000,
+       block_number DECIMAL(38,0) DEFAULT 1000000000000000000,
+       dtAdded TIMESTAMPTZ DEFAULT Now()
+    );
+    `;
+const query5 = `DROP TABLE liquidation_log;`;
+
+const query4 = `SELECT * FROM liquidation_log;`;
+
+const query6 = `SELECT * from healthy WHERE address = '0xc47ee9528335cf7d2cc420c419aa6786f6d44d9a';`;
+
+const query7 = `SELECT * from healthy ORDER BY health_factor DESC LIMIT 10;`;
+
+const query8 = `INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('0de7be3b25cfc0a14575d5fee6ced09ca6f8e938bf9ad2b04f29b6934f81f5f3','0x8821753E6c1cBdcF6423fD93F58691907179a468','0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174','0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6',2432046419824576,1035894,39600287931,17577102,now());`
+
+const main = async () => {
+  try {
+    const { rows } = await db.query(query6);
+    //const healthFactorCheck = await aaveContract.methods.getUserAccountData('0xc47EE9528335cF7D2cc420C419Aa6786f6D44D9A').call({},'17613224');
+    //console.log(healthFactorCheck);
+    console.log(rows)
+    console.log('end');
+    process.exit();
+  } catch (err) {
+    console.log('ERROR IN MAIN', err);
+    await db.end();
+  }
+}
+
+main();
+
 
 //health_factor <= 1 ORDER BY health_factor ASC;
 
@@ -122,22 +206,6 @@ const query = `SELECT
 //SELECT table_name FROM information_schema.tables WHERE table_schema='public';
 //`SELECT * FROM ${TABLE_ACCOUNTS} ORDER BY health_factor ASC LIMIT 25;`;
 //`SELECT * FROM ${TABLE_ACCOUNTS} WHERE health_factor >= 1000000000000000000 and health_factor < 1002000000000000000 ORDER BY health_factor ASC;`;
-
-const main = async () => {
-  try {
-    const { rows } = await db.query(query);
-    console.log(rows);
-    console.log('end');
-    process.exit();
-  } catch (err) {
-    // console.log('ERROR IN MAIN', err);
-    await db.end();
-  }
-}
-
-main();
-
-
 
 // `UPDATE user_balances b
 // SET   ( am_dai, am_usdc, am_weth, am_wbtc, am_aave, am_wmatic, am_usdt, debt_dai, debt_usdc, debt_weth, debt_wbtc, debt_aave, debt_wmatic, debt_usdt, last_updated ) 

@@ -40,7 +40,7 @@ const getAllAccounts = async () => {
   // TODO: make the query order by ascending
   // SELECT TOP 50 PERCENT address FROM ${TABLE_USER_BALANCES};
   // SELECT address FROM (SELECT TOP 50 PERCENT address FROM ${TABLE_USER_BALANCES} ORDER BY address DESC) ORDER BY address ASC
-  const query = `SELECT address FROM ${TABLE_USER_BALANCES} ORDER BY last_updated ASC;`;
+  const query = `SELECT address FROM ${TABLE_USER_BALANCES} ORDER BY last_updated DESC;`;
   const { rows: accountsArr } = await db.query(query);
   return accountsArr;
 };
