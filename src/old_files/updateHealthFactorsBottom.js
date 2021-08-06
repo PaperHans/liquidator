@@ -8,14 +8,14 @@ import Web3 from 'web3';
 import _, { toNumber } from 'lodash';
 import fetch from 'node-fetch';
 // local imports
-import db from "./db";
-import { buildBatchOfAccounts } from './utils/accountBatchFxns';
+import db from "../db";
+import { buildBatchOfAccounts } from '../utils/accountBatchFxns';
 import {
   address as healthFactorContractAddress,
   abi     as healthFactorContractAbi,
-} from './abis/custom/healthFactor';
-import { getContract } from "./utils/web3Utils";
-import { buildMultiDeleteQuery } from './utils/psqlUtils';
+} from '../abis/custom/healthFactor';
+import { getContract } from "../utils/web3Utils";
+import { buildMultiDeleteQuery } from '../utils/psqlUtils';
 
 const setUpBasicWeb3 = url => new Web3(new Web3(url));
 // constants

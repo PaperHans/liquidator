@@ -50,10 +50,11 @@ const healthFactorContract = getContract(
 
 const query = `
   SELECT * FROM healthy
-  WHERE health_factor <= 1.003 AND
+  WHERE health_factor <= 1.005 AND
   (
     LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.0000008
-  );`;
+  )
+  ORDER BY LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) DESC;`;
 
 /**
  * main

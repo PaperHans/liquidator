@@ -20,7 +20,8 @@
     "loopBalancesBottom": "python3 src/looperBalancesBottom.py",
     "loadFromCsv": "node index.js loadFromCsv",
     "healthListen": "node index.js dbHealthUpdateListener",
-    "blockLiquidator": "node index.js blockLiquidator"
+    "blockLiquidator": "node index.js blockLiquidator",
+    "blockEvents": "node index.js blockEvents"
   },
   "author": "",
   "license": "ISC",

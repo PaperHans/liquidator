@@ -77,18 +77,20 @@ const query5 = `DROP TABLE liquidation_log;`;
 
 const query4 = `SELECT * FROM liquidation_log;`;
 
-const query6 = `SELECT * from healthy WHERE address = '0xc47ee9528335cf7d2cc420c419aa6786f6d44d9a';`;
+const query6 = `SELECT * from healthy WHERE address = '0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b';`;
 
 const query7 = `SELECT * from healthy ORDER BY health_factor DESC LIMIT 10;`;
 
 const query8 = `INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('0de7be3b25cfc0a14575d5fee6ced09ca6f8e938bf9ad2b04f29b6934f81f5f3','0x8821753E6c1cBdcF6423fD93F58691907179a468','0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174','0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6',2432046419824576,1035894,39600287931,17577102,now());`
 
+const query9 = `SELECT (EXISTS (SELECT 1 FROM liquidation_log WHERE hash = '3858cd8bec4babe4888592d829c5c2486eacfe6b13544fdd4952b3238dbcad'))::int;`;
+
 const main = async () => {
   try {
-    const { rows } = await db.query(query6);
-    //const healthFactorCheck = await aaveContract.methods.getUserAccountData('0xc47EE9528335cF7D2cc420C419Aa6786f6D44D9A').call({},'17613224');
-    //console.log(healthFactorCheck);
-    console.log(rows)
+    const healthFactorCheck = await aaveContract.methods.getUserAccountData('0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b').call({},'17689798');
+    console.log(healthFactorCheck);
+    // const { rows } = await db.query(query6);
+    // console.log(rows)
     console.log('end');
     process.exit();
   } catch (err) {

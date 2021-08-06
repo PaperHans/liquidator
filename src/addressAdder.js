@@ -69,10 +69,10 @@ const init = async () => {
                 // add user with health factor
                 try {
                     const res = await db.query(insertUserQuery2(TABLE_USER_BALANCES,event.returnValues.onBehalfOf.toLowerCase()));
-                    console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
+                    console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event, ' ', event.blockNumber);
                 } catch (err) {
                     console.log(err)
-                    console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event);
+                    console.log(event.returnValues.onBehalfOf.toLowerCase()," ",event.event, ' ', event.blockNumber);
                 }
             }
         }
@@ -88,10 +88,10 @@ const init = async () => {
                 // add user with health factor
                 try {
                     const res = await db.query(insertUserQuery2(TABLE_USER_BALANCES,event.returnValues.user.toLowerCase()));
-                    console.log(event.returnValues.user.toLowerCase()," ",event.event);
+                    console.log(event.returnValues.user.toLowerCase()," ",event.event, ' ', event.blockNumber);
                 } catch (err) {
                     console.log(err)
-                    console.log(event.returnValues.user.toLowerCase()," ",event.event);
+                    console.log(event.returnValues.user.toLowerCase()," ",event.event, ' ', event.blockNumber);
                 }
             }
         }
