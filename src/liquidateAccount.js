@@ -6,17 +6,13 @@
 // modules
 import Web3 from 'web3';
 import HDWalletProvider from '@truffle/hdwallet-provider';
-import fetch from 'node-fetch';
+import {ethers} from 'ethers';
 // local
 import { getContract } from './utils/web3Utils'
 import {
   address as flashAndLiquidateAddress,
   abi     as flashAndLiquidateAbi,
 } from './abis/custom/flashAndLiquidate';
-import { 
-  address as aaveLendingPoolAddress, 
-  abi as aaveLendingPoolAbi 
-} from './abis/aave/general/aaveLendingPool';
 import { tokenInfo } from './constants/aaveConstants';
 import _ from 'lodash';
 import ethUtils from 'ethereumjs-util';
@@ -24,22 +20,20 @@ import abiTools from 'web3-eth-abi';
 import BigNumber from 'bignumber.js';
 import db from './db';
 // constants
-const { WEB3_WALLET, WEB3_MNEMONIC, CHAINSTACK_HTTPS, DEDICATED_WSS, TABLE_ACCOUNTS } = process.env;
+const { WEB3_WALLET, WEB3_MNEMONIC, DEDICATED_WSS } = process.env;
 let provider = new HDWalletProvider({
   mnemonic: { phrase: WEB3_MNEMONIC },
   providerOrUrl: DEDICATED_WSS,
 });
-const setUpWeb3 = () => new Web3(provider);
-let web3 = setUpWeb3();
+
+// get private key
+const mnemonicWallet = ethers.Wallet.fromMnemonic(WEB3_MNEMONIC);
+const { privateKey } = mnemonicWallet;
+
+const web3 = new Web3(provider);
 const flashAndLiquidateContract = getContract(web3, flashAndLiquidateAbi, flashAndLiquidateAddress);
-const aaveContract = getContract(web3, aaveLendingPoolAbi, aaveLendingPoolAddress);
 
 // helper fxns
-const getGasPriceFxn = async () => {
-  const gasPriceRes = await fetch('https://gasstation-mainnet.matic.network');
-  const gasPriceResJson = await gasPriceRes.json();
-  return gasPriceResJson;
-};
 /**
  * the sorting hat
  * @param {*} _accountWithReserveData 
@@ -75,7 +69,6 @@ const rankByEthAmt = acctObj => {
       highestDebtAmt = highestEthDebtAmt / tokenPriceInEth;
       highestDebtTokenAddress = tokenInfo[tokenName].tokenAddress;
       newAcctObj.debtTokenName = tokenName;
-
     }
     // get the highest collateral token amount and address
     if (collatInEth >= highestEthCollatAmt) {
@@ -90,48 +83,37 @@ const rankByEthAmt = acctObj => {
   }
 
   // calculate the debt to cover
-  // const maxLiquidatableInEth = Math.min(highestEthDebtAmt, highestEthCollatAmt / 2);
   const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
   const ratio = debtToCoverEth / highestEthDebtAmt;
-  //console.log("highestDebtAmt ",highestDebtAmt);
   const trueLiquidatableAmt = ratio * highestDebtAmt;
-  //console.log("trueLiquidatableAmt ",trueLiquidatableAmt);
+  // console.log('tokenInfotokenInfo', tokenInfo)
   newAcctObj.debtToCover = web3.utils.toBN(Math.floor(BigNumber(trueLiquidatableAmt * (10 ** tokenInfo[newAcctObj.debtTokenName].aaveDecimals))));
   newAcctObj.debtToCoverEth = debtToCoverEth;
-  //console.log('were liquidatable', newAcctObj)
-  //console.log("newAcctObj.debtToCover ",`"${newAcctObj.debtToCover}"`);
   return newAcctObj;
+};
+const getGasAmt = async (_collateralAddress, 
+  _reserveAddress, 
+  _addressToLiquidate, 
+  _debtToCover, 
+  _receiveATokens,
+) => {
+  try {
+    const expectedMaxGasUsed1 = await flashAndLiquidateContract.methods.FlashAndLiquidate(
+      _collateralAddress, 
+      _reserveAddress, 
+      _addressToLiquidate, 
+      `${_debtToCover}`, 
+      _receiveATokens,
+    ).estimateGas({ from: WEB3_WALLET });
+    console.log('expectedMaxGasUsed1expectedMaxGasUsed1', expectedMaxGasUsed1);
+    return expectedMaxGasUsed1;
+  } catch (err) {
+    console.log('ERROR: expectedMaxGasUsed1expectedMaxGasUsed1', err);
+  }
 };
 
 export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
   // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
-  // const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
-  // const updatedAcct = rankByEthAmt(accountWithReserveData);
-
-  //check if user health factor below 1, if not skip
-  //console.log("BLOCK ",blockNumber);
-  //let blocky = blockNumber - 1;
-  //console.log("BLOCK-1 ",blocky);
-  // let healthFactorCheck;
-  // try {
-  //   healthFactorCheck = await aaveContract.methods.getUserAccountData(_accountObj.address).call({},blocky);
-  //   //console.log(healthFactorCheck);
-  // } catch (err) {
-  //   console.log('error in get Health Factor For Account', err);
-  // }
-  // let healthy;
-  // healthy = healthFactorCheck.healthFactor;
-  // // if they have no collateral, print
-  // if(healthy === '115792089237316195423570985008687907853269984665640564039457584007913129639935') {
-  //   console.log(`User ${_accountObj.address} is not unhealthy!`);
-  //   return;
-  // } 
-  // // else get the printable healthFactor value
-  // if (healthy > 1000000000000000000) {
-  //   console.log(`User ${_accountObj.address} is above 1 at ${healthy} on block ${blockNumber}!`);
-  //   return;
-  // }
-
   const updatedAcct = rankByEthAmt(_accountObj);
   const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth, debtTokenName } = updatedAcct;
   const receiveATokens = false;
@@ -144,25 +126,19 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
     console.log("Found bad pair!");
     return;
   }
+  const decimalsMatic = tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
+  const priceEthPerMaticReal = _accountObj.wmatic_price / 1
+  const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
+  const debtToCoverInMaticWei = debtToCoverInMaticReal * (10 ** decimalsMatic);
+  
+  // uses debtToCoverInMaticWei to calculate a gasPrice based on estimated profit and estimated gas used
+  const collatTokenKey = Object.keys(tokenInfo).filter(key => tokenInfo[key].tokenAddress === collateralAddress)[0];
+  const { reward: collatBonus } = tokenInfo[collatTokenKey];
+  // create function for is it profitable or not?
+  const expectedMaxGasUsed1 = await getGasAmt(collateralAddress, reserveAddress, addressToLiquidate, debtToCover, receiveATokens);
+  process.exit();
   try {
-    const decimalsMatic = tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
-    //const priceEthPerMatic = tokenInfo['wmatic'].price; // chainlinkPriceEthPerTokenReal
-    const priceEthPerMaticReal = _accountObj.wmatic_price/1
-    const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
-    const debtToCoverInMaticWei = debtToCoverInMaticReal * (10 ** decimalsMatic);
-    
-    // uses debtToCoverInMaticWei to calculate a gasPrice based on estimated profit and estimated gas used
-    const collatTokenKey = Object.keys(tokenInfo).filter(key => tokenInfo[key].tokenAddress === collateralAddress)[0];
-    const { reward: collatBonus } = tokenInfo[collatTokenKey];
-    // console.log({
-    //   "collateralAddress": collateralAddress,
-    //   "reserveAddress": reserveAddress,
-    //   "addressToLiquidate": addressToLiquidate,
-    //   "debtToCover": `${debtToCover}`,
-    //   "receiveATokens": receiveATokens
 
-    // });
-    // create function for is it profitable or not?
     await flashAndLiquidateContract.methods.FlashAndLiquidate(
       collateralAddress, 
       reserveAddress, 
@@ -180,15 +156,10 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
       if (isNaN(expectedMaxGasUsed)){
         console.log('Gas was NaN... will probably fail');
         return;
-        //calculatedGas = 1000000;
       } else {
         calculatedGas = expectedMaxGasUsed;
       }
-      // get the gas price from polygonscan
-      // const { safeLow: gasPriceSafeLow, standard: gasPriceStandard, fast: gasPriceFast, fastest: gasPriceFastest } = await getGasPriceFxn();
-
       // get the estimated gas
-      //console.log("ExpectedGas ",expectedMaxGasUsed);
       const actualEstGas = Math.ceil(calculatedGas * 0.8);
 
       // estimate the txn cost in gas
@@ -263,8 +234,8 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
               try {
                 const res = await db.query(`INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('${hashedFin}','${addressToLiquidate}','${collateralAddress}','${reserveAddress}',${debtToCover},${gasLimit},${gasPricey},${blockNumber},now());`);
               } catch (err) {
-                  console.log("Error in loading to database: ",err);
-                  return;
+                console.log("Error in loading to database: ",err);
+                return;
               }
               return receipt;
             })
@@ -286,90 +257,91 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
   }
 };
 
-// send a signed txn
-async function main() {
-  const { API_URL, PRIVATE_KEY } = process.env;
-  const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
-  const web3 = createAlchemyWeb3(API_URL);
-  const myAddress = '0x610Ae88399fc1687FA7530Aac28eC2539c7d6d63' //TODO: replace this address with your own public address
- 
-  const nonce = await web3.eth.getTransactionCount(myAddress, 'latest'); // nonce starts counting from 0
 
-  const transaction = {
-   'to': '0x31B98D14007bDEe637298086988A0bBd31184523', // faucet address to return eth
-   'value': 100,
-   'gas': 30000,
-   'maxFeePerGas': 1000000108,
-   'nonce': nonce,
-   // optional data field to send message or execute smart contract
-  };
+// from alchemy: send a signed txn
+// async function main() {
+//   const { API_URL, PRIVATE_KEY } = process.env;
+//   const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
+//   const web3 = createAlchemyWeb3(API_URL);
+//   const myAddress = '0x610Ae88399fc1687FA7530Aac28eC2539c7d6d63' //TODO: replace this address with your own public address
+
+//   const nonce = await web3.eth.getTransactionCount(myAddress, 'latest'); // nonce starts counting from 0
+
+//   const transaction = {
+//   to: '0x31B98D14007bDEe637298086988A0bBd31184523', // faucet address to return eth
+//   value: 100,
+//   gas: 30000,
+//   maxFeePerGas: 1000000108,
+//   nonce,
+//   // optional data field to send message or execute smart contract
+//   };
  
-  const signedTx = await web3.eth.accounts.signTransaction(transaction, PRIVATE_KEY);
+//   const signedTx = await web3.eth.accounts.signTransaction(transaction, PRIVATE_KEY);
   
-  web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
-  if (!error) {
-    console.log("🎉 The hash of your transaction is: ", hash, "\n Check Alchemy's Mempool to view the status of your transaction!");
-  } else {
-    console.log("❗Something went wrong while submitting your transaction:", error)
-  }
- });
-}
+//   web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
+//   if (!error) {
+//     console.log("🎉 The hash of your transaction is: ", hash, "\n Check Alchemy's Mempool to view the status of your transaction!");
+//   } else {
+//     console.log("❗Something went wrong while submitting your transaction:", error)
+//   }
+//  });
+// }
 
-main();
+// // main();
 
-// send signed txn and also estimate gas
-const AlchemyWeb3 = require("@alch/alchemy-web3");
+// // send signed txn and also estimate gas
+// const AlchemyWeb3 = require("@alch/alchemy-web3");
 
-const { API_URL_HTTP_PROD_RINKEBY, PRIVATE_KEY, ADDRESS } = process.env;
-const toAddress = "0x31B98D14007bDEe637298086988A0bBd31184523";
-const web3 = AlchemyWeb3.createAlchemyWeb3(API_URL_HTTP_PROD_RINKEBY);
+// const { API_URL_HTTP_PROD_RINKEBY, PRIVATE_KEY, ADDRESS } = process.env;
+// const toAddress = "0x31B98D14007bDEe637298086988A0bBd31184523";
+// const web3a = AlchemyWeb3.createAlchemyWeb3(API_URL_HTTP_PROD_RINKEBY);
 
-async function signTx(web3, fields = {}) {
-  const nonce = await web3.eth.getTransactionCount(ADDRESS, 'latest');
+// async function signTx(web3a, fields = {}) {
+//   const nonce = await web3a.eth.getTransactionCount(ADDRESS, 'latest');
 
-  const transaction = {
-   'nonce': nonce,
-   ...fields,
-  };
+//   const transaction = {
+//    'nonce': nonce,
+//    ...fields,
+//   };
  
-  return await web3.eth.accounts.signTransaction(transaction, PRIVATE_KEY);
-}
+//   return await web3a.eth.accounts.signTransaction(transaction, PRIVATE_KEY);
+// }
 
-async function sendTx(web3, fields = {}) {
-  const signedTx = await signTx(web3, fields);
+// async function sendTx(web3a, fields = {}) {
+//   const signedTx = await signTx(web3a, fields);
 
-  web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
-    if (!error) {
-      console.log("Transaction sent!", hash);
-      const interval = setInterval(function() {
-        console.log("Attempting to get transaction receipt...");
-        web3.eth.getTransactionReceipt(hash, function(err, rec) {
-          if (rec) {
-            console.log(rec);
-            clearInterval(interval);
-          }
-        });
-      }, 1000);
-    } else {
-      console.log("Something went wrong while submitting your transaction:", error);
-    }
-  });
-}
+//   web3a.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
+//     if (!error) {
+//       console.log("Transaction sent!", hash);
+//       const interval = setInterval(function() {
+//         console.log("Attempting to get transaction receipt...");
+//         web3a.eth.getTransactionReceipt(hash, function(err, rec) {
+//           if (rec) {
+//             console.log(rec);
+//             clearInterval(interval);
+//           }
+//         });
+//       }, 1000);
+//     } else {
+//       console.log("Something went wrong while submitting your transaction:", error);
+//     }
+//   });
+// }
 
-function sendLegacyTx(web3) {
-  web3.eth.estimateGas({
-    to: toAddress,
-    data: "0xc6888fa10000000000000000000000000000000000000000000000000000000000000003"
-  }).then((estimatedGas) => {
-    web3.eth.getGasPrice().then((price) => {
-      sendTx(web3, {
-        gas: estimatedGas,
-        gasPrice: price,
-        to: toAddress,
-        value: 100,
-      });
-    });
-  });
-}
+// function sendLegacyTx(_web3a) {
+//   _web3a.eth.estimateGas({
+//     to: toAddress,
+//     data: "0xc6888fa10000000000000000000000000000000000000000000000000000000000000003"
+//   }).then((estimatedGas) => {
+//     _web3a.eth.getGasPrice().then((price) => {
+//       sendTx(_web3a, {
+//         gas: estimatedGas,
+//         gasPrice: price,
+//         to: toAddress,
+//         value: 100,
+//       });
+//     });
+//   });
+// }
 
-sendLegacyTx(web3);
+// sendLegacyTx(web3a);

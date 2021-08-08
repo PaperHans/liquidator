@@ -49,7 +49,7 @@ const healthFactorContract = getContract(
 );
 
 
-const getAddressArr = () => {
+const getAddressObjsFromServer = async () => {
   const query = `
     SELECT * FROM healthy
     WHERE health_factor <= 1.005 AND
@@ -65,31 +65,29 @@ const getAddressArr = () => {
       )
     ) DESC;
   `;
-  const { rows } = await db.query(query);
-
-  // get list of addresses from list returned by query
-  const addressArr = rows.map(({ address }) => address);
-  console.log(`amount of addresses: ${addressArr.length}`);
-  return addressArr;
+  const { rows: addressObjArr } = await db.query(query);
+  console.log(`amount of addresses: ${addressObjArr.length}`);
+  return addressObjArr;
 };
-const getLiquidatableAccounts = async (addressArr, block) => {
-  const liquidatableAccountsArr = [];
+const getLiquidatableAccounts = async (_addressObjArr, block) => {
   try {
     // get health factor for each address
+    const addressArr = _addressObjArr.map(({ address }) => address);
     const healthFactorArr = await healthFactorContract.methods.healthFactors(addressArr, token).call({}, block.number);
     // map health factors to accounts
-    const mappedHealthFactorArr = healthFactorArr.map((hf, idx) => {return { accountAddress: addressArr[idx], healthFactor: toNumber(hf) }});
+    const mappedHealthFactorArr = healthFactorArr.map((hf, idx) => {
+      return { ..._addressObjArr[idx], healthFactor: toNumber(hf) };
+    });
     // add to to-proceed-with array if under a threshold health factor
     const liquidatableAccountsArr = mappedHealthFactorArr.filter(accountObj => accountObj.healthFactor < 1000000000001000000);
-    console.log('liquidatable accounts:', liquidatableAccountsArr.join(','));
-
+    console.log('liquidatable accounts: ');
+    liquidatableAccountsArr.forEach(element => {console.log(element)});
     return liquidatableAccountsArr;
   } catch (err) {
     console.log('error in: get Health Factor For Accounts', err);
-    liquidatableAccountsArr = rows;
   }
 };
-const liquidateAccounts = async _liquidatableAccountsArr => {
+const liquidateAccounts = async (_liquidatableAccountsArr, _block) => {
   const successfulLiquidations = [];
   const unattemptedLiquidations = [];
   const failedLiquidations = [];
@@ -98,8 +96,8 @@ const liquidateAccounts = async _liquidatableAccountsArr => {
   for (let idx = 0; idx < _liquidatableAccountsArr.length; idx += 1) {
     const liquidatableAccountObj = _liquidatableAccountsArr[idx];
     try {
-      const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj, block.number);
-      console.log("liquidationResponse", liquidationResponse);
+      const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj, _block.number);
+      console.log('liquidationResponse', liquidationResponse);
       if (liquidationResponse) successfulLiquidations.push(liquidationResponse);
       if (!liquidationResponse) unattemptedLiquidations.push(liquidationResponse);
     } catch (err) {
@@ -120,10 +118,10 @@ const listenForNewBlocks = async () => {
   console.log(`Starting websocket\n`);
   web3.eth.subscribe('newBlockHeaders').on('data', async block => {
     console.log(`\n\n New MATIC block received. Block # ${block.number}`);
-    
-    const addressArr = getAddressArr();
-    const liquidatableAccountsArr = await getLiquidatableAccounts(addressArr, block);
-    await liquidateAccounts(liquidatableAccountsArr);
+
+    const addressObjArr = await getAddressObjsFromServer();
+    const liquidatableAccountsArr = await getLiquidatableAccounts(addressObjArr, block);
+    await liquidateAccounts(liquidatableAccountsArr, block);
   });
 };
 
