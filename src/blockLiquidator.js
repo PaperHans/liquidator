@@ -81,7 +81,6 @@ const getLiquidatableAccounts = async (_addressObjArr, block) => {
     // add to to-proceed-with array if under a threshold health factor
     const liquidatableAccountsArr = mappedHealthFactorArr.filter(accountObj => accountObj.healthFactor < 1000000000001000000);
     console.log('liquidatable accounts: ');
-    liquidatableAccountsArr.forEach(element => {console.log(element)});
     return liquidatableAccountsArr;
   } catch (err) {
     console.log('error in: get Health Factor For Accounts', err);

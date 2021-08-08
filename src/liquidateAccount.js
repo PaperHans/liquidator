@@ -86,12 +86,12 @@ const rankByEthAmt = acctObj => {
   const debtToCoverEth = Math.min(highestEthDebtAmt / 2, highestEthCollatAmt);
   const ratio = debtToCoverEth / highestEthDebtAmt;
   const trueLiquidatableAmt = ratio * highestDebtAmt;
-  // console.log('tokenInfotokenInfo', tokenInfo)
   newAcctObj.debtToCover = web3.utils.toBN(Math.floor(BigNumber(trueLiquidatableAmt * (10 ** tokenInfo[newAcctObj.debtTokenName].aaveDecimals))));
   newAcctObj.debtToCoverEth = debtToCoverEth;
   return newAcctObj;
 };
-const getGasAmt = async (_collateralAddress, 
+const getGasAmt = async (
+  _collateralAddress, 
   _reserveAddress, 
   _addressToLiquidate, 
   _debtToCover, 
@@ -108,152 +108,140 @@ const getGasAmt = async (_collateralAddress,
     console.log('expectedMaxGasUsed1expectedMaxGasUsed1', expectedMaxGasUsed1);
     return expectedMaxGasUsed1;
   } catch (err) {
+    if (err.message === 'execution reverted: SWAP_TOO_BIG') return;
     console.log('ERROR: expectedMaxGasUsed1expectedMaxGasUsed1', err);
+    return
   }
 };
+const calculateGasPrice = (_debtToCoverInMaticProfit, _actualEstGas) => {
+  let gasPriceInWei;
+  if (_debtToCoverInMaticProfit < 100000000000000000) { // less than 1
+    const willingToSpend = _debtToCoverInMaticProfit * 0.8; 
+    gasPriceInWei = Math.max(Math.ceil(willingToSpend / _actualEstGas),1000000000);
+  }
+  if (_debtToCoverInMaticProfit >= 100000000000000000 && _debtToCoverInMaticProfit <= 10000000000000000000) { // 1 and 10 matic profit
+    const willingToSpend = _debtToCoverInMaticProfit * 0.75; 
+    gasPriceInWei = Math.ceil(willingToSpend / _actualEstGas); //$33
+  }
+  if (_debtToCoverInMaticProfit > 10000000000000000000 && _debtToCoverInMaticProfit <= 100000000000000000000) { // between 10 and 100 matic profit
+    const willingToSpend = _debtToCoverInMaticProfit * 0.65; 
+    gasPriceInWei = Math.ceil(willingToSpend / _actualEstGas); //$33
+  }
+  if (_debtToCoverInMaticProfit > 100000000000000000000) { // above 100 matic (30%)
+    const willingToSpend = _debtToCoverInMaticProfit * 0.55; 
+    gasPriceInWei = Math.ceil(willingToSpend / _actualEstGas); //$33
+  }
+  return gasPriceInWei;
+};
+const calcIfTxnIsProfitable = (_actualEstGas, _gasPriceInWei, _debtToCoverInMaticProfit) => {
+  const estTxnCost = _actualEstGas * _gasPriceInWei;
+  const estTxnCostInMatic = estTxnCost / 1e18;
+  console.log("gasUsed: ", _actualEstGas, "with _gasPriceInWei: ", _gasPriceInWei, 'gwei', _gasPriceInWei / 1000000000);
+  console.log("Profit: ", _debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic);
+  return _debtToCoverInMaticProfit < estTxnCost;
+};
+const checkIfHashExists = async _hashHexStr => {
+  const { rows: search } = await db.query(`SELECT (EXISTS (SELECT 1 FROM liquidation_log WHERE hash = '${_hashHexStr}'))::int;`);
+  return search[0].exists === 1;
+};
+const makeLiquidationCall = async (_collateralAddress, _reserveAddress, _addressToLiquidate, _debtToCover, _receiveATokens, _dbHashHexStr, _gasPrice, _gasLimit, _blockNumber) => {
+  // prep the call
+  const encoded = flashAndLiquidateContract.methods.FlashAndLiquidate(_collateralAddress, _reserveAddress, _addressToLiquidate, `${_debtToCover}`, _receiveATokens).encodeABI();
+  const txnObj = {
+    from: WEB3_WALLET,
+    gas: gasLimit,
+    gasPrice: _gasPrice,
+    nonce: currentNonce,
+    to: flashAndLiquidateAddress,
+    data: encoded,
+  };
+  console.log('TXTXTX ', txnObj);
+  const signedTxn = await web3.eth.accounts.signTransaction(txnObj, privateKey);
+  console.log('Signed TXN: ', signedTxn);
+  
+  // send the call
+  // hash -> sentTxnRes
+  try {
+    const sentTxnRes = await web3.eth.sendSignedTransaction(signedTxn.rawTransaction);
+    console.log("🎉 The hash of your transaction is: ", sentTxnRes, "\n Check Alchemy's Mempool to view the status of your transaction!");
+  } catch (err) {
+    console.log("ERROR in liquidateAccount.js > make Liquidation Call(): Something went wrong while submitting your transaction:", err);
+    return;
+  }
+  // send to database
+  try {
+    const query = `
+      INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded)
+      VALUES ('${_dbHashHexStr}','${_addressToLiquidate}','${_collateralAddress}','${_reserveAddress}',${_debtToCover},${_gasLimit},${_gasPrice},${_blockNumber},now());
+    `;
+    const res = await db.query(query);
+  } catch (err) {
+    
+  }
+  return;
+};
+const calculateDTCInMaticWei = (priceEthPerMaticReal, _debtToCoverEth) => {
+  const debtToCoverInMaticReal = _debtToCoverEth / priceEthPerMaticReal;
+  const decimalsMatic = tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
+  const debtToCoverInMaticWei = debtToCoverInMaticReal * (10 ** decimalsMatic);
+  return debtToCoverInMaticWei;
+};
 
+// main
 export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
   // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
   const updatedAcct = rankByEthAmt(_accountObj);
-  const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth, debtTokenName } = updatedAcct;
+  const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth } = updatedAcct;
   const receiveATokens = false;
-  if (!collateralAddress  && typeof collateralAddress  !== typeof 'a' ) throw Error(`ERROR: Issue with collateralAddress: ${ collateralAddress}  typeof:${ typeof collateralAddress}`);
-  if (!reserveAddress     && typeof reserveAddress     !== typeof 'a' ) throw Error(`ERROR: Issue with reserveAddress: ${    reserveAddress}  typeof:${    typeof reserveAddress}`);
-  if (!addressToLiquidate && typeof addressToLiquidate !== typeof 'a' ) throw Error(`ERROR: Issue with addressToLiquidate: ${addressToLiquidate}  typeof:${typeof addressToLiquidate}`);
-  if (!debtToCover        && typeof debtToCover        !== typeof 10  ) throw Error(`ERROR: Issue with debtToCover: ${       debtToCover}  typeof:${       typeof debtToCover}`);
-  // skips the bad pair of AAVE/wBTC
-  if ((collateralAddress === '0xD6DF932A45C0f255f85145f286eA0b292B21C90B' && reserveAddress === '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6') || (reserveAddress === '0xD6DF932A45C0f255f85145f286eA0b292B21C90B' && collateralAddress === '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6')) {
-    console.log("Found bad pair!");
-    return;
-  }
-  const decimalsMatic = tokenInfo['wmatic'].chainlinkDecimals; // chainlinkPriceEthPerTokenReal ERC20 decimal
-  const priceEthPerMaticReal = _accountObj.wmatic_price / 1
-  const debtToCoverInMaticReal = debtToCoverEth / priceEthPerMaticReal;
-  const debtToCoverInMaticWei = debtToCoverInMaticReal * (10 ** decimalsMatic);
-  
-  // uses debtToCoverInMaticWei to calculate a gasPrice based on estimated profit and estimated gas used
+  if (!collateralAddress  && typeof collateralAddress  !== typeof 'a') throw Error(`ERROR: Issue with collateralAddress: ${ collateralAddress }  typeof: ${typeof collateralAddress}`);
+  if (!reserveAddress     && typeof reserveAddress     !== typeof 'a') throw Error(`ERROR: Issue with reserveAddress: ${    reserveAddress    }  typeof: ${typeof reserveAddress}`);
+  if (!addressToLiquidate && typeof addressToLiquidate !== typeof 'a') throw Error(`ERROR: Issue with addressToLiquidate: ${addressToLiquidate}  typeof: ${typeof addressToLiquidate}`);
+  if (!debtToCover        && typeof debtToCover        !== typeof 10 ) throw Error(`ERROR: Issue with debtToCover: ${       debtToCover       }  typeof: ${typeof debtToCover}`);
+
+  // check if its a wbtc/aave pair: if so, skip
+  const aaveTokenAddr = '0xD6DF932A45C0f255f85145f286eA0b292B21C90B';
+  const wbtcTokenAddr = '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6';
+  const isAaveWbtc = collateralAddress === aaveTokenAddr && reserveAddress === wbtcTokenAddr;
+  const isWbtcAave = collateralAddress === wbtcTokenAddr && reserveAddress === aaveTokenAddr;
+  if (isAaveWbtc || isWbtcAave) {console.log("Found bad pair!"); return}
+
+  // get the 'debt to cover' amount in matic, in wei
+  const debtToCoverInMaticWei = calculateDTCInMaticWei(_accountObj.wmatic_price, debtToCoverEth);
+
+  // get the collateral bonus
   const collatTokenKey = Object.keys(tokenInfo).filter(key => tokenInfo[key].tokenAddress === collateralAddress)[0];
   const { reward: collatBonus } = tokenInfo[collatTokenKey];
-  // create function for is it profitable or not?
-  const expectedMaxGasUsed1 = await getGasAmt(collateralAddress, reserveAddress, addressToLiquidate, debtToCover, receiveATokens);
-  process.exit();
-  try {
 
-    await flashAndLiquidateContract.methods.FlashAndLiquidate(
-      collateralAddress, 
-      reserveAddress, 
-      addressToLiquidate, 
-      `${debtToCover}`, 
-      receiveATokens
-    ).estimateGas({ from: WEB3_WALLET }, async (err, expectedMaxGasUsed) => {
-      if (err) {
-        console.log('Error getting gas estimate: ', err);
-        return;
-      }
-      // calculate the debt to cover in matic
-      const debtToCoverInMaticProfit = debtToCoverInMaticWei * collatBonus;
-      let calculatedGas;
-      if (isNaN(expectedMaxGasUsed)){
-        console.log('Gas was NaN... will probably fail');
-        return;
-      } else {
-        calculatedGas = expectedMaxGasUsed;
-      }
-      // get the estimated gas
-      const actualEstGas = Math.ceil(calculatedGas * 0.8);
+  // get the estimated gas amount for txn, exit if nan
+  const expectedMaxGasUsed = await getGasAmt(collateralAddress, reserveAddress, addressToLiquidate, debtToCover, receiveATokens);
+  if (!expectedMaxGasUsed) {console.log('Gas was NaN... will probably fail'); return}
 
-      // estimate the txn cost in gas
-      let gasPriceInWei;
-      if (debtToCoverInMaticProfit < 100000000000000000) { // less than 1
-        const willingToSpend = debtToCoverInMaticProfit * 0.8; 
-        gasPriceInWei = Math.max(Math.ceil(willingToSpend / actualEstGas),1000000000);
-      }
-      if (debtToCoverInMaticProfit >= 100000000000000000 && debtToCoverInMaticProfit <= 10000000000000000000) { // 1 and 10 matic profit
-        const willingToSpend = debtToCoverInMaticProfit * 0.75; 
-        gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
-      }
-      if (debtToCoverInMaticProfit > 10000000000000000000 && debtToCoverInMaticProfit <= 100000000000000000000) { // between 10 and 100 matic profit
-        const willingToSpend = debtToCoverInMaticProfit * 0.65; 
-        gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
-      }
-      if (debtToCoverInMaticProfit > 100000000000000000000) { // above 100 matic (30%)
-        const willingToSpend = debtToCoverInMaticProfit * 0.55; 
-        gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
-      }
-      
-      const estTxnCost = actualEstGas * gasPriceInWei;
-      const estTxnCostInMatic = estTxnCost / 1e18;
-      console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMaticWei', debtToCoverInMaticWei, ' debtToCover ', `${debtToCover}`);
-      console.log("gasUsed: ", actualEstGas, "with gasPriceInWei: ", gasPriceInWei, 'gwei', gasPriceInWei / 1000000000);
-      console.log("Profit: ", debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic, " Address: ", addressToLiquidate, " on block ", blockNumber);
+  // calculate gas price with estimated profit and estimated gas amt for txn
+  const actualEstGas = Math.ceil(expectedMaxGasUsed * 0.8);
+  const debtToCoverInMaticProfit = debtToCoverInMaticWei * collatBonus;
+  const gasPriceInWei = calculateGasPrice(debtToCoverInMaticProfit, actualEstGas);
 
-      // if this is profitable, attempt to liquidate
-      if (debtToCoverInMaticProfit > estTxnCost) {
-        const gasLimit = Math.round(calculatedGas * 1.1);
-        const gasPriceMax = 20000000000000;
-        const gasPricey = Math.min(gasPriceInWei, gasPriceMax);
-        // create function for send transaction
-        web3.eth.getTransactionCount(WEB3_WALLET, async (err, noncey) => {
-          if (err) {
-            console.log('Error getting nonce: ', err);
-            return;
-          }
-          const hashedData = ethUtils.keccak256(abiTools.encodeParameters(['string','string','string','string','uint'],[collateralAddress,reserveAddress,addressToLiquidate,`${debtToCover}`,noncey]));
-          const hashedFin = hashedData.toString('hex').substring(2);
-          console.log("Hash: ",hashedFin);
-          try {
-            const { rows: search } = await db.query(`SELECT (EXISTS (SELECT 1 FROM liquidation_log WHERE hash = '${hashedFin}'))::int;`);
-            console.log(search[0].exists);
-            if ( search[0].exists === 1 ) {
-              console.log("Hash already exists!");
-              return;
-            }
-          } catch (err) {
-            console.log("Error searching database for hash!");
-            return;
-          }
-          const encoded = flashAndLiquidateContract.methods.FlashAndLiquidate(collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, receiveATokens).encodeABI();
-          const tx = {
-            from: WEB3_WALLET,
-            gas: gasLimit,
-            gasPrice: gasPricey,
-            nonce: noncey,
-            chain: 137,
-            to: flashAndLiquidateAddress,
-            data: encoded
-          };
-          console.log("TXTXTX ",tx);
-          try {
-            web3.eth.sendTransaction(tx, async (err, receipt) => {
-              console.log('\n\n test tset test testt \n\n');
-              if (err) {
-                console.log('Error sending transaction: ', err);
-                return;
-              }
-              console.log('\n\n response here\n',receipt, '\n\n end response\n');
-              try {
-                const res = await db.query(`INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('${hashedFin}','${addressToLiquidate}','${collateralAddress}','${reserveAddress}',${debtToCover},${gasLimit},${gasPricey},${blockNumber},now());`);
-              } catch (err) {
-                console.log("Error in loading to database: ",err);
-                return;
-              }
-              return receipt;
-            })
-          } catch (err) {
-            console.log("Error sending the actual transaction: ",err);
-            return;
-          }
-        });
-        return 'probably success but didnt return receipt';
-      } else {
-        console.log("NOT PROFITABLE!");
-        return;
-      }
-    });
-  } catch (err) {
-    console.log('failed liquidation _accountObj', _accountObj);
-    console.log('\nERROR IN THE LIQUIDATION CALL', err);
-    return;
+  // determine if transaction is profitable
+  const isTxnProfitable = calcIfTxnIsProfitable(actualEstGas, gasPriceInWei, debtToCoverInMaticProfit);
+  if (isTxnProfitable) {
+    const gasLimit = Math.round(actualEstGas * 1.1);
+    const gasPriceMax = 20000000000000;
+    const gasPrice = Math.min(gasPriceInWei, gasPriceMax);
+    const currentNonce = await web3.eth.getTransactionCount(WEB3_WALLET, 'latest');
+    console.log("noncey: ", currentNonce);
+
+    // build the txn to hash
+    const dbHash = ethUtils.keccak256(abiTools.encodeParameters(['string', 'string', 'string', 'string', 'uint'], [collateralAddress, reserveAddress, addressToLiquidate, `${debtToCover}`, currentNonce]));
+    const dbHashHexStr = dbHash.toString('hex').substring(2);
+    console.log("dbHashHexStr: ", dbHashHexStr);
+    // check if hash exists in database
+    const doesHashExist = await checkIfHashExists(dbHashHexStr);
+    if (doesHashExist) {console.log('Hash already exists!'); return}
+
+    // send the liquidation txn
+    const x = await makeLiquidationCall(collateralAddress, reserveAddress, addressToLiquidate, debtToCover, receiveATokens, dbHashHexStr, gasPrice, gasLimit, blockNumber);
+  } else {
+    console.log("NOT PROFITABLE!"); return;
   }
 };
 
