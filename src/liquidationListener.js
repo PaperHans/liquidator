@@ -5,10 +5,10 @@ import { address as aaveLendingPoolAddress, abi as aaveLendingPoolAbi } from './
 
 // init
 const {
-    CHAINSTACK_WSS,
+    DEDICATED_WSS,
     TABLE_USER_BALANCES
 } = process.env;
-if (!CHAINSTACK_WSS) throw 'Please request .env file';
+if (!DEDICATED_WSS) throw 'Please request .env file';
 const options = {
     timeout: 30000, // ms
 
@@ -36,7 +36,7 @@ const options = {
     }
 };
 
-const web3 = new Web3(new Web3.providers.WebsocketProvider(CHAINSTACK_WSS, options));
+const web3 = new Web3(new Web3.providers.WebsocketProvider(DEDICATED_WSS, options));
 
 // const borrowTopic = '0xc6a898309e823ee50bac64e45ca8adba6690e99e7841c45d754e2a38e9019d9b';
 // const depositTopic = '0xde6857219544bb5b7746f48ed30be6386fefc61b2f864cacf559893bf50fd951';

@@ -24,10 +24,10 @@ import abiTools from 'web3-eth-abi';
 import BigNumber from 'bignumber.js';
 import db from './db';
 // constants
-const { WEB3_WALLET, WEB3_MNEMONIC, CHAINSTACK_HTTPS, CHAINSTACK_WSS, TABLE_ACCOUNTS } = process.env;
+const { WEB3_WALLET, WEB3_MNEMONIC, CHAINSTACK_HTTPS, DEDICATED_WSS, TABLE_ACCOUNTS } = process.env;
 let provider = new HDWalletProvider({
   mnemonic: { phrase: WEB3_MNEMONIC },
-  providerOrUrl: CHAINSTACK_WSS,
+  providerOrUrl: DEDICATED_WSS,
 });
 const setUpWeb3 = () => new Web3(provider);
 let web3 = setUpWeb3();
@@ -194,25 +194,25 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
       // estimate the txn cost in gas
       let gasPriceInWei;
       if (debtToCoverInMaticProfit < 100000000000000000) { // less than 1
-        const willingToSpend = debtToCoverInMaticProfit * 0.6; 
+        const willingToSpend = debtToCoverInMaticProfit * 0.8; 
         gasPriceInWei = Math.max(Math.ceil(willingToSpend / actualEstGas),1000000000);
       }
       if (debtToCoverInMaticProfit >= 100000000000000000 && debtToCoverInMaticProfit <= 10000000000000000000) { // 1 and 10 matic profit
-        const willingToSpend = debtToCoverInMaticProfit * 0.5; 
+        const willingToSpend = debtToCoverInMaticProfit * 0.75; 
         gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
       }
       if (debtToCoverInMaticProfit > 10000000000000000000 && debtToCoverInMaticProfit <= 100000000000000000000) { // between 10 and 100 matic profit
-        const willingToSpend = debtToCoverInMaticProfit * 0.4; 
+        const willingToSpend = debtToCoverInMaticProfit * 0.65; 
         gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
       }
       if (debtToCoverInMaticProfit > 100000000000000000000) { // above 100 matic (30%)
-        const willingToSpend = debtToCoverInMaticProfit * 0.3; 
+        const willingToSpend = debtToCoverInMaticProfit * 0.55; 
         gasPriceInWei = Math.ceil(willingToSpend / actualEstGas); //$33
       }
       
       const estTxnCost = actualEstGas * gasPriceInWei;
       const estTxnCostInMatic = estTxnCost / 1e18;
-      console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMaticWei', debtToCoverInMaticWei)
+      console.log('debtToCoverEth', debtToCoverEth, 'priceEthPerMaticReal', priceEthPerMaticReal, '= debtToCoverInMaticWei', debtToCoverInMaticWei, ' debtToCover ', `${debtToCover}`);
       console.log("gasUsed: ", actualEstGas, "with gasPriceInWei: ", gasPriceInWei, 'gwei', gasPriceInWei / 1000000000);
       console.log("Profit: ", debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic, " Address: ", addressToLiquidate, " on block ", blockNumber);
 

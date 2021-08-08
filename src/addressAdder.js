@@ -9,10 +9,10 @@ import Web3WsProvider from 'web3-providers-ws';
 
 // init
 const {
-    CHAINSTACK_WSS,
+    DEDICATED_WSS,
     TABLE_USER_BALANCES
 } = process.env;
-if (!CHAINSTACK_WSS) throw 'Please request .env file';
+if (!DEDICATED_WSS) throw 'Please request .env file';
 const options = {
     timeout: 30000, // ms
 
@@ -35,12 +35,12 @@ const options = {
     reconnect: {
         auto: true,
         delay: 5000, // ms
-        maxAttempts: 5,
+        maxAttempts: 15,
         onTimeout: false
     }
 };
 
-const web3 = new Web3(new Web3.providers.WebsocketProvider(CHAINSTACK_WSS, options));
+const web3 = new Web3(new Web3.providers.WebsocketProvider(DEDICATED_WSS, options));
 
 const init = async () => {
   

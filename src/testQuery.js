@@ -12,10 +12,10 @@ import {
 
 // init
 const {
-  CHAINSTACK_HTTPS,
+  DEDICATED_HTTPS,
   TABLE_ETH_PRICES,
 } = process.env;
-if (!CHAINSTACK_HTTPS) throw 'Please request .env file';
+if (!DEDICATED_HTTPS) throw 'Please request .env file';
 const options = {
   timeout: 30000, // ms
 
@@ -43,7 +43,7 @@ const options = {
   },
 };
 
-const web3 = new Web3(new Web3.providers.HttpProvider(CHAINSTACK_HTTPS));
+const web3 = new Web3(new Web3.providers.HttpProvider(DEDICATED_HTTPS));
 const aaveContract = getContract(web3, aaveLendingPoolAbi, aaveLendingPoolAddress);
 
 const addy = "0x411A27de6175B411Bfd828A46200EC070Fbf6C15";
@@ -59,7 +59,7 @@ const query = `SELECT
 
 const query2 = `UPDATE price_data SET wmatic = 409534016563039 WHERE type = 'prices';`;
 
-const query1 = `SELECT * FROM healthy WHERE address = '8b9ab5e2e0b662cee076bf566fc9d27fdc6f94cf';`;
+const query1 = `SELECT * FROM healthy WHERE address = '0xF55530A51E7300B13bDAB64CD278CE53f52d0c14';`;
 
 const query3 =  `CREATE TABLE liquidation_log (
        hash varchar(64) PRIMARY KEY,
@@ -77,7 +77,7 @@ const query5 = `DROP TABLE liquidation_log;`;
 
 const query4 = `SELECT * FROM liquidation_log;`;
 
-const query6 = `SELECT * from healthy WHERE address = '0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b';`;
+const query6 = `SELECT * from healthy WHERE address = '0xf55530a51e7300b13bdab64cd278ce53f52d0c14';`;
 
 const query7 = `SELECT * from healthy ORDER BY health_factor DESC LIMIT 10;`;
 
@@ -87,7 +87,7 @@ const query9 = `SELECT (EXISTS (SELECT 1 FROM liquidation_log WHERE hash = '3858
 
 const main = async () => {
   try {
-    const healthFactorCheck = await aaveContract.methods.getUserAccountData('0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b').call({},'17689798');
+    const healthFactorCheck = await aaveContract.methods.getUserAccountData('0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b').call({});
     console.log(healthFactorCheck);
     // const { rows } = await db.query(query6);
     // console.log(rows)
@@ -218,3 +218,4 @@ main();
 //       ('0xef49fe20949593ed1767aa27e6d61649d6574835',1,1,1,1,1,1,1,1,1,1,1,1,1,1,now())
 //    ) AS v ( address, am_dai, am_usdc, am_weth, am_wbtc, am_aave, am_wmatic, am_usdt, debt_dai, debt_usdc, debt_weth, debt_wbtc, debt_aave, debt_wmatic, debt_usdt, last_updated )
 // WHERE  b.address = v.address;`
+

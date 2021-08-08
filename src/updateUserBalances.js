@@ -17,20 +17,20 @@ import {
 import { getContract } from "./utils/web3Utils";
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
 
-const setUpBasicWeb3 = url => new Web3(new Web3(url));
+const setUpBasicWeb3 = url => new Web3(new Web3.providers.WebsocketProvider(url));
 // constants
 const {
   POLY_URL1,
   POLY_URL2,
   POLY_URL3,
-  CHAINSTACK_WSS,
+  DEDICATED_WSS,
   POLYGON_NODE_3_HTTPS,
   TABLE_USER_BALANCES,
 } = process.env;
 // idk what token this is
 const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
 const balanceGetterContract = getContract(
-  setUpBasicWeb3(CHAINSTACK_WSS),
+  setUpBasicWeb3(DEDICATED_WSS),
   balancesContractAbi,
   balancesContractAddress,
 );

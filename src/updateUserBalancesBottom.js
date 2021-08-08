@@ -17,7 +17,7 @@ import {
 import { getContract } from "./utils/web3Utils";
 import { buildMultiDeleteQuery } from './utils/psqlUtils';
 
-const setUpBasicWeb3 = url => new Web3(new Web3(url));
+const setUpBasicWeb3 = url => new Web3(new Web3.providers.WebsocketProvider(url));
 // constants
 const {
   POLY_URL1,

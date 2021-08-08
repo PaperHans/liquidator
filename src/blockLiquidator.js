@@ -11,8 +11,8 @@ import {
   abi     as healthFactorContractAbi,
 } from './abis/custom/healthFactor';
 // constants
-const { CHAINSTACK_WSS } = process.env;
-if (!CHAINSTACK_WSS) throw 'Please request .env file';
+const { DEDICATED_WSS } = process.env;
+if (!DEDICATED_WSS) throw 'Please request .env file';
 const options = {
   timeout: 30000, // ms
 
@@ -35,12 +35,12 @@ const options = {
   reconnect: {
     auto: true,
     delay: 5000, // ms
-    maxAttempts: 5,
+    maxAttempts: 15,
     onTimeout: false,
   },
 };
 
-const web3 = new Web3(new Web3.providers.WebsocketProvider(CHAINSTACK_WSS, options));
+const web3 = new Web3(new Web3.providers.WebsocketProvider(DEDICATED_WSS, options));
 const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
 const healthFactorContract = getContract(
   web3,
@@ -98,8 +98,12 @@ const listenForNewBlocks = async () => {
 
       for (let idx = 0; idx < toProceedWith.length; idx += 1) {
         const liquidatableAccountObj = toProceedWith[idx];
-        const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj,block.number);
-        console.log("liquidationResponse",liquidationResponse);
+        try {
+          const liquidationResponse = await liquidateSingleAccount(liquidatableAccountObj,block.number);
+          console.log("liquidationResponse",liquidationResponse);
+        } catch (err) {
+          console.log("Error in await liquidation: ", err);
+        }
         if (!liquidationResponse) {
           console.log('liquidation NOT attempted!');
         }
