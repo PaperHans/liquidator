@@ -50,11 +50,11 @@ const healthFactorContract = getContract(
 
 const query = `
   SELECT * FROM healthy
-  WHERE health_factor <= 1.005 AND
+  WHERE health_factor <= 1.0005 AND
   (
-    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.0000008
+    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00000008
   )
-  ORDER BY LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) DESC;`;
+  ORDER BY LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) ASC;`;
 
 /**
  * main
@@ -70,7 +70,6 @@ const listenForNewBlocks = async () => {
     let idArr = [];
     let toProceedWith = [];
     let mappedHealthFactorArr;
-    try {
       const { rows } = await db.query(query);
       console.log(rows.length);
       
@@ -104,17 +103,14 @@ const listenForNewBlocks = async () => {
         } catch (err) {
           console.log("Error in await liquidation: ", err);
         }
-        if (!liquidationResponse) {
-          console.log('liquidation NOT attempted!');
-        }
-        else {
-          console.log('liquidation attempted!');
-        }
+        // if (!liquidationResponse) {
+        //   console.log('liquidation NOT attempted!');
+        // }
+        // else {
+        //   console.log('liquidation attempted!');
+        // }
       }
       console.log('no error this block');
-    } catch (err) {
-      console.log('ERROR IN MAIN', err);
-    }
   });
 };
 
