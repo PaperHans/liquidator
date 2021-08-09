@@ -50,11 +50,11 @@ const healthFactorContract = getContract(
 
 const query = `
   SELECT * FROM healthy
-  WHERE health_factor <= 1.0005 AND
+  WHERE health_factor <= 1.005 AND
   (
-    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00000008
+    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.0000008
   )
-  ORDER BY LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) ASC;`;
+  ORDER BY LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) DESC;`;
 
 /**
  * main
@@ -92,7 +92,7 @@ const listenForNewBlocks = async () => {
           toProceedWith = rows;
         }
       }
-      console.log(mappedHealthFactorArr.join(','));
+      console.log(mappedHealthFactorArr.join(','), "on ",block.number);
       //console.log(toProceedWith);
 
       for (let idx = 0; idx < toProceedWith.length; idx += 1) {
@@ -102,6 +102,7 @@ const listenForNewBlocks = async () => {
           console.log("liquidationResponse",liquidationResponse);
         } catch (err) {
           console.log("Error in await liquidation: ", err);
+          console.log("liquidationObj",liquidatableAccountObj);
         }
         // if (!liquidationResponse) {
         //   console.log('liquidation NOT attempted!');

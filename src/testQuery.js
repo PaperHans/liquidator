@@ -59,7 +59,7 @@ const query = `SELECT
 
 const query2 = `UPDATE price_data SET wmatic = 409534016563039 WHERE type = 'prices';`;
 
-const query1 = `SELECT * FROM healthy WHERE address = '0xF55530A51E7300B13bDAB64CD278CE53f52d0c14';`;
+const query1 = `SELECT * FROM healthy WHERE address = '0x8def0eea26b21081f93cbedbb410cde7386d5fc3';`;
 
 const query3 =  `CREATE TABLE liquidation_log (
        hash varchar(64) PRIMARY KEY,
@@ -77,7 +77,7 @@ const query5 = `DROP TABLE liquidation_log;`;
 
 const query4 = `SELECT * FROM liquidation_log;`;
 
-const query6 = `SELECT * from healthy WHERE address = '0xf55530a51e7300b13bdab64cd278ce53f52d0c14';`;
+const query6 = `SELECT * from healthy WHERE address = '${'0x8def0eea26b21081f93cbedbb410cde7386d5fc3'.toLowerCase()}';`;
 
 const query7 = `SELECT * from healthy ORDER BY health_factor DESC LIMIT 10;`;
 
@@ -87,10 +87,10 @@ const query9 = `SELECT (EXISTS (SELECT 1 FROM liquidation_log WHERE hash = '3858
 
 const main = async () => {
   try {
-    const healthFactorCheck = await aaveContract.methods.getUserAccountData('0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b').call({});
-    console.log(healthFactorCheck);
-    // const { rows } = await db.query(query6);
-    // console.log(rows)
+    // const healthFactorCheck = await aaveContract.methods.getUserAccountData('0x452d5d9b6ad5cfdfa6daeb29d63227b381ed2f0b').call({});
+    // console.log(healthFactorCheck);
+    const { rows } = await db.query(query1);
+    console.log(rows)
     console.log('end');
     process.exit();
   } catch (err) {
@@ -218,4 +218,5 @@ main();
 //       ('0xef49fe20949593ed1767aa27e6d61649d6574835',1,1,1,1,1,1,1,1,1,1,1,1,1,1,now())
 //    ) AS v ( address, am_dai, am_usdc, am_weth, am_wbtc, am_aave, am_wmatic, am_usdt, debt_dai, debt_usdc, debt_weth, debt_wbtc, debt_aave, debt_wmatic, debt_usdt, last_updated )
 // WHERE  b.address = v.address;`
+
 

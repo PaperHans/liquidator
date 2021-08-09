@@ -107,8 +107,9 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
   // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
   // const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
   // const updatedAcct = rankByEthAmt(accountWithReserveData);
-
+  console
   const updatedAcct = rankByEthAmt(_accountObj);
+  console.log('failed liquidation updatedAcctObj', updatedAcct);
   const { collateralAddress, reserveAddress, address: addressToLiquidate, debtToCover, debtToCoverEth, debtTokenName } = updatedAcct;
   const receiveATokens = false;
   if (!collateralAddress  && typeof collateralAddress  !== typeof 'a' ) throw Error(`ERROR: Issue with collateralAddress: ${ collateralAddress}  typeof:${ typeof collateralAddress}`);
@@ -129,14 +130,14 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
   // uses debtToCoverInMaticWei to calculate a gasPrice based on estimated profit and estimated gas used
   const collatTokenKey = Object.keys(tokenInfo).filter(key => tokenInfo[key].tokenAddress === collateralAddress)[0];
   const { reward: collatBonus } = tokenInfo[collatTokenKey];
-  // console.log({
-  //   "collateralAddress": collateralAddress,
-  //   "reserveAddress": reserveAddress,
-  //   "addressToLiquidate": addressToLiquidate,
-  //   "debtToCover": `${debtToCover}`,
-  //   "receiveATokens": receiveATokens
+  console.log({
+    "collateralAddress": collateralAddress,
+    "reserveAddress": reserveAddress,
+    "addressToLiquidate": addressToLiquidate,
+    "debtToCover": `${debtToCover}`,
+    "receiveATokens": receiveATokens
 
-  // });
+  });
   // create function for is it profitable or not?
   const expectedMaxGasUsed = await flashAndLiquidateContract.methods.FlashAndLiquidate(
       collateralAddress, 
@@ -184,7 +185,7 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
     console.log("gasUsed: ", actualEstGas, "with gasPriceInWei: ", gasPriceInWei, 'gwei', gasPriceInWei / 1000000000);
     console.log("Profit: ", debtToCoverInMaticProfit / 1e18, "vs Estimated Fee: ", estTxnCostInMatic, " Address: ", addressToLiquidate, " on block ", blockNumber);
 
-    if (debtToCoverInMaticProfit < estTxnCost) {
+    if (debtToCoverInMaticProfit > estTxnCost) {
       const gasLimit = Math.round(calculatedGas * 1.1);
       const gasPriceMax = 20000000000000;
       const gasPricey = Math.min(gasPriceInWei, gasPriceMax);
@@ -211,19 +212,33 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
         data: encoded
       };
       console.log("TXTXTX ",tx);
-      const signedTx = await web3.eth.accounts.signTransaction(tx, WEB3_PRIVATE_KEY);
-      console.log("Signed TXN: ",signedTx);
-  
-      web3.eth.sendSignedTransaction(signedTx.rawTransaction, async (error, hash) => {
-        if (!error) {
-            const res = await db.query(`INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('${hashedFin}','${addressToLiquidate}','${collateralAddress}','${reserveAddress}',${debtToCover},${gasLimit},${gasPricey},${blockNumber},now());`);
-
-          console.log("🎉 The hash of your transaction is: ", hash, "\n Check Alchemy's Mempool to view the status of your transaction!");
-        } else {
-          console.log("❗Something went wrong while submitting your transaction:", error)
+      await web3.eth.sendTransaction(tx, async (err, receipt) => {
+        console.log('\n\n test tset test testt \n\n');
+        if (err) {
+          console.log('Error sending transaction: ', err);
           return;
         }
+        console.log('\n\n response here\n',receipt, '\n\n end response\n');
+        const res = await db.query(`INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('${hashedFin}','${addressToLiquidate}','${collateralAddress}','${reserveAddress}',${debtToCover},${gasLimit},${gasPricey},${blockNumber},now());`);
+        return receipt;
       });
+
+      // const signedTx = await web3.eth.accounts.signTransaction(tx, WEB3_PRIVATE_KEY);
+      // console.log("Signed TXN: ",signedTx);
+  
+      // const hashTxn = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+      // console.log("HashTxn: ",hashTxn);
+
+      // web3.eth.sendSignedTransaction(signedTx.rawTransaction, async (error, hash) => {
+      //   if (!error) {
+      //       const res = await db.query(`INSERT INTO liquidation_log (hash, address, collateral, reserve, debt_to_cover, gas, gas_price, block_number, dtAdded) values ('${hashedFin}','${addressToLiquidate}','${collateralAddress}','${reserveAddress}',${debtToCover},${gasLimit},${gasPricey},${blockNumber},now());`);
+
+      //     console.log("🎉 The hash of your transaction is: ", hash, "\n Check Alchemy's Mempool to view the status of your transaction!");
+      //   } else {
+      //     console.log("❗Something went wrong while submitting your transaction:", error)
+      //     return;
+      //   }
+      // });
 
     } else {
       console.log("NOT PROFITABLE!");
@@ -233,6 +248,7 @@ export const liquidateSingleAccount = async (_accountObj, blockNumber) => {
 
   } catch (err) {
     console.log('failed liquidation _accountObj', _accountObj);
+    console.log('failed liquidation updatedAcctObj', updatedAcct);
     console.log('\nERROR IN THE LIQUIDATION CALL', err);
     return;
   }
