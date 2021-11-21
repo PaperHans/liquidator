@@ -1,0 +1,47 @@
+@startuml
+skinparam defaultFontName "Proxima Nova Cn CF", "DejaVu Sans", "SansSerif", sans-serif
+title: Block Liquidator
+
+actor app
+participant db
+
+app -> db: query table view: 'healthy'
+app <- db: Arr Of Liquidatable Accounts
+
+participant lsa [
+  =liquidateSingleAccount()
+]
+lsa <- app: params: (liquidatableAccount)
+participant "rankByEthAmt()" as rbea
+participant "preSendCheck()" as psc
+lsa <-> rbea: rank assets by relative value (eth)
+lsa <-> psc
+
+participant east [
+  =evalAndSendTxn()
+  ----
+  - ""Evaluate transaction""
+  - ""Send transaction""
+]
+participant "calcTxnGasInfo()" as calcTxnGasInfo
+east <- lsa: params: (\n  web3, contract, updatedAcct\n  expMaxGasUsed, tokenObj,\n  debtToCoverInMaticPrecise,\n  flashAndLiquidateAddress\n)
+east <-> calcTxnGasInfo: params (gasPriceObj, expMaxGasUsed)
+east <- calcTxnGasInfo: returns { amt, price, cost }
+
+participant stx [
+  =sendTxn()
+  ----
+  - Get txn count
+  - Build txn obj
+  - Send to RPC
+]
+stx <- east: params: (\n  web3, contract, updatedAcct,\n  txnGasInfo, flashAndLiquidateAddress\n)
+participant "web3.eth.getTransactionCount()" as getTxnCt
+participant "buildEncodedTxn()" as buildEncodedTxn
+participant "web3.eth.sendTransaction()" as sendTransaction
+stx -> getTxnCt
+getTxnCt -> buildEncodedTxn
+getTxnCt <- buildEncodedTxn: returns: txObj = {\n  data, from, to, gas,\n  gasPrice, nonce, chain\n}
+buildEncodedTxn -> sendTransaction: params: txObj
+
+@enduml
