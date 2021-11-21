@@ -1,6 +1,5 @@
 export const aaveDataProviderAddr = '0x7551b5D2763519d4e37e8B81929D336De671d46d';
-export const address = aaveDataProviderAddr;
-
+export const address = '0x7551b5D2763519d4e37e8B81929D336De671d46d';
 export const abi = [
   {
     "inputs": [],

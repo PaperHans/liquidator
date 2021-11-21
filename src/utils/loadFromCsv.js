@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'fs';
 
-import db, { pgDb } from './db';
+import db, { pgDb } from '../db';
 const { TABLE_USER_BALANCES } = process.env;
 
 let allAddedAddresses = [];
