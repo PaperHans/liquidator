@@ -419,7 +419,7 @@ FROM
     FROM user_balances w, price_data m ) c;
 
 
-
+-- TODO: adjust _eth to _matic
 CREATE VIEW healthy AS
 SELECT 
   c.*,
@@ -461,27 +461,28 @@ SELECT
 FROM
     (SELECT 
     w.address AS address,
-    (w.am_dai/1000000000000000000) * (m.dai/1000000000000000000) AS am_dai_eth,
-    (w.am_usdc/1000000) * (m.usdc/1000000000000000000) AS am_usdc_eth,
-    (w.am_weth/1000000000000000000) * (m.weth/1000000000000000000 ) AS am_weth_eth,
-    (w.am_wbtc/100000000) * (m.wbtc/1000000000000000000 ) AS am_wbtc_eth,
-    (w.am_aave/1000000000000000000) * (m.aave/1000000000000000000) AS am_aave_eth,
+    (w.am_dai   /1000000000000000000) * (m.dai   /1000000000000000000) AS am_dai_eth,
+    (w.am_usdc  /1000000            ) * (m.usdc  /1000000000000000000) AS am_usdc_eth,
+    (w.am_weth  /1000000000000000000) * (m.weth  /1000000000000000000) AS am_weth_eth,
+    (w.am_wbtc  /100000000          ) * (m.wbtc  /1000000000000000000) AS am_wbtc_eth,
+    (w.am_aave  /1000000000000000000) * (m.aave  /1000000000000000000) AS am_aave_eth,
     (w.am_wmatic/1000000000000000000) * (m.wmatic/1000000000000000000) AS am_wmatic_eth,
-    (w.am_usdt/1000000) * (m.usdt/1000000000000000000) AS am_usdt_eth,
-    (w.debt_dai/1000000000000000000) * (m.dai/1000000000000000000) AS debt_dai_eth,
-    (w.debt_usdc/1000000) * (m.usdc/1000000000000000000) AS debt_usdc_eth,
-    (w.debt_weth/1000000000000000000) * (m.weth/1000000000000000000 ) AS debt_weth_eth,
-    (w.debt_wbtc/100000000) * (m.wbtc/1000000000000000000 ) AS debt_wbtc_eth,
-    (w.debt_aave/1000000000000000000) * (m.aave/1000000000000000000) AS debt_aave_eth,
+    (w.am_usdt  /1000000            ) * (m.usdt  /1000000000000000000) AS am_usdt_eth,
+    (w.debt_dai   /1000000000000000000) * (m.dai   /1000000000000000000) AS debt_dai_eth,
+    (w.debt_usdc  /1000000            ) * (m.usdc  /1000000000000000000) AS debt_usdc_eth,
+    (w.debt_weth  /1000000000000000000) * (m.weth  /1000000000000000000) AS debt_weth_eth,
+    (w.debt_wbtc  /100000000          ) * (m.wbtc  /1000000000000000000) AS debt_wbtc_eth,
+    (w.debt_aave  /1000000000000000000) * (m.aave  /1000000000000000000) AS debt_aave_eth,
     (w.debt_wmatic/1000000000000000000) * (m.wmatic/1000000000000000000) AS debt_wmatic_eth,
-    (w.debt_usdt/1000000) * (m.usdt/1000000000000000000) AS debt_usdt_eth,
-    m.dai/1000000000000000000 AS dai_price,
-    m.usdc/1000000000000000000 AS usdc_price,
-    m.weth/1000000000000000000 AS weth_price,
-    m.wbtc/1000000000000000000 AS wbtc_price,
-    m.aave/1000000000000000000 AS aave_price,
+    (w.debt_usdt  /1000000            ) * (m.usdt  /1000000000000000000) AS debt_usdt_eth,
+
+    m.dai   /1000000000000000000 AS dai_price,
+    m.usdc  /1000000000000000000 AS usdc_price,
+    m.weth  /1000000000000000000 AS weth_price,
+    m.wbtc  /1000000000000000000 AS wbtc_price,
+    m.aave  /1000000000000000000 AS aave_price,
     m.wmatic/1000000000000000000 AS wmatic_price,
-    m.usdt/1000000000000000000 AS usdt_price
+    m.usdt  /1000000000000000000 AS usdt_price
     FROM user_balances w, price_data m ) c;
 
 

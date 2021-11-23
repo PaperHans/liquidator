@@ -3,8 +3,8 @@
 // modules
 // local imports
 import { getChainLinkPrices } from "./contractReserves";
-import { pgDb } from "./db";
-import { liquidateSingleAccount } from "./liquidateAccount";
+import { pgDb } from "../db/db";
+import { liquidateSingleAccount } from "../liquidateAccount";
 
 /** Listen on the database for health value updates
  */

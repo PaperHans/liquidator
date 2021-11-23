@@ -1,10 +1,10 @@
 // modules
 import { BigNumber } from "bignumber.js";
-import _ from 'lodash';
+import _ from "lodash";
 import { Contract } from "ethers";
 import Web3 from "web3";
 import { tokenInfo, TokenInfoAave } from "../constants/aaveConstants";
-import { getGasPrice } from "./contractUtils";
+import { GasPrice, getGasPrice } from "./contractUtils";
 
 // constants
 const { WEB3_WALLET } = process.env;
@@ -19,12 +19,7 @@ const calcTxnGasPrice = async (
   maxPrice: number
 ) => {
   // get the gas price from polygonscan
-  const {
-    // safeLow: gasPriceSafeLow,
-    standard: gasPriceStandard,
-    fast: gasPriceFast,
-    fastest: gasPriceFastest,
-  } = await getGasPrice();
+  const gasPrice: GasPrice = await getGasPrice();
 
   let gasPriceGwei;
 
@@ -32,19 +27,19 @@ const calcTxnGasPrice = async (
     debtToCoverInMaticProfit >= 500_000_000_000_000_000 &&
     debtToCoverInMaticProfit <= 50_000_000_000_000_000_000
   ) {
-    gasPriceGwei = gasPriceFast * 4;
+    gasPriceGwei = gasPrice.fast * 4;
   }
   if (
     debtToCoverInMaticProfit > 50_000_000_000_000_000_000 &&
     debtToCoverInMaticProfit <= 100_000_000_000_000_000_000
   ) {
-    gasPriceGwei = gasPriceFastest * 100;
+    gasPriceGwei = gasPrice.fastest * 100;
   }
   if (debtToCoverInMaticProfit > 100_000_000_000_000_000_000) {
-    gasPriceGwei = gasPriceFastest * 200;
+    gasPriceGwei = gasPrice.fastest * 200;
   }
   if (debtToCoverInMaticProfit < 500_000_000_000_000_000) {
-    gasPriceGwei = gasPriceStandard + 5;
+    gasPriceGwei = gasPrice.standard + 5;
   }
 
   console.log(`wei : ${1000000000 * gasPriceGwei}`, `gwei: ${gasPriceGwei}`);
@@ -82,6 +77,7 @@ export const evalAndSendTxn = async (
   // calculate the debt to cover in matic - collateral bonus (reward) and debt amt (in matic)
   const debtToCoverInMaticProfit = debtToCoverInMaticPrecise * tokenObj.reward;
 
+  // convert all gas calcs to fxn
   const gasPriceObj = await calcTxnGasPrice(
     debtToCoverInMaticProfit,
     20_000_000_000_000

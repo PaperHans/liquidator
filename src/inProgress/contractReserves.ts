@@ -6,25 +6,24 @@
 import Web3 from "web3";
 import _, { toNumber } from "lodash";
 // local
-import { getContract } from "./utils/web3Utils";
+import { getContract } from "../utils/web3Utils";
 // import { address as reserveContractAddress, abi as reserveContractAbi } from './abis/custom/reserveGetter';
 import {
   address as reserveDebtContractAddress,
   abi as reserveDebtContractAbi,
-} from "./abis/custom/reserveDebtGetter";
+} from "../abis/custom/reserveDebtGetter";
 import {
   address as chainPricesContractAddress,
   abi as chainPricesContractAbi,
-} from "./abis/custom/chainAbiPrices";
-import { tokenInfo } from "./constants/aaveConstants";
+} from "../abis/custom/chainAbiPrices";
+import { tokenInfo } from "../constants/aaveConstants";
 import { Provider } from "@truffle/hdwallet-provider/dist/constructor/types";
-import { aaveDataProviderAddr } from "./abis/aave/general/aaveDataProvider";
+import { aaveDataProviderAddr } from "../abis/aave/general/aaveDataProvider";
 // constants
 const tokenOrder = ["dai", "usdc", "weth", "wbtc", "aave", "wmatic", "usdt"];
 const priceAddressesArr = tokenOrder.map(
   (key) => tokenInfo[key].chainlinkAddress
 );
-
 
 // Instantiate Web3 Connection
 const web3 = new Web3(new Web3(process.env.POLY_URL1 as string) as Provider);
@@ -46,7 +45,7 @@ export const getChainLinkPrices = async () => {
     chainPricesContractAbi,
     chainPricesContractAddress
   );
-  
+
   // call for chainlink prices dai, usdc, 1, wbtc, aave, wmatic, usdt
   const priceData = await chainPricesContract.methods
     .getLatestAll(priceAddressesArr)

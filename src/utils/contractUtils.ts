@@ -1,14 +1,20 @@
 import fetch from "node-fetch";
 
+export interface GasPrice {
+  safeLow: number;
+  standard: number;
+  fast: number;
+  fastest: number;
+  blockTime: number;
+  blockNumber: number;
+}
 /** Get the current gas price
- *
- * @returns
  */
-export const getGasPrice = async () => {
+export const getGasPrice = async (): Promise<GasPrice> => {
   const gasPriceRes = await fetch(
     "https://gasstation-mainnet.matic.network",
     {}
   );
-  const gasPriceResJson = await gasPriceRes.json();
-  return gasPriceResJson;
+
+  return await gasPriceRes.json();
 };

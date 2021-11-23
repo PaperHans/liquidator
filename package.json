@@ -10,7 +10,6 @@
     "loop": "python3 src/looper.py",
     "analyze-events": "node index.js eventAnalyzer",
     "query": "node index.js testQuery",
-    "adder": "node index.js addressAdder",
     "chainAdder": "node index.js chainLinkAdder",
     "liquidations": "node index.js liquidationListener",
     "updateBalances": "node index.js updateUserBalances",

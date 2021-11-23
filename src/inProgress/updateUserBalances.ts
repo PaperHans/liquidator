@@ -1,23 +1,20 @@
-/**
- * Get all accounts (TODO: a section of accounts)
+/** Get all accounts (TODO: a section of accounts)
  * Query the health factor on chain
  * Update the database entry (in table 'accounts')
  */
 // modules
-import Web3 from 'web3';
-import _, { toNumber } from 'lodash';
-import fetch from 'node-fetch';
+import Web3 from "web3";
 // local imports
 import db from "./db";
-import { buildBatchOfAccounts } from './utils/accountBatchFxns';
+import { buildBatchOfAccounts } from "../utils/accountBatchFxns";
 import {
   address as balancesContractAddress,
-  abi     as balancesContractAbi,
-} from './abis/custom/balanceGetter';
-import { getContract } from "./utils/web3Utils";
-import { buildMultiDeleteQuery } from './utils/psqlUtils';
+  abi as balancesContractAbi,
+} from "../abis/custom/balanceGetter";
+import { getContract } from "../utils/web3Utils";
+import { buildMultiDeleteQuery } from "../utils/psqlUtils";
 
-const setUpBasicWeb3 = url => new Web3(new Web3(url));
+const setUpBasicWeb3 = (url) => new Web3(new Web3(url));
 // constants
 const {
   POLY_URL1,
@@ -28,11 +25,11 @@ const {
   TABLE_USER_BALANCES,
 } = process.env;
 // idk what token this is
-const token = '0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf';
+const token = "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf";
 const balanceGetterContract = getContract(
   setUpBasicWeb3(CHAINSTACK_WSS),
   balancesContractAbi,
-  balancesContractAddress,
+  balancesContractAddress
 );
 
 // fxns
@@ -44,39 +41,45 @@ const getAllAccounts = async () => {
   const { rows: accountsArr } = await db.query(query);
   return accountsArr;
 };
-const getBalancesForAccounts = async _batchOfAccounts => {
+const getBalancesForAccounts = async (_batchOfAccounts) => {
   // retries batch if contract call fails
   for (let i = 0; i < 2; i += 1) {
     try {
-      const userBalanceArr = await balanceGetterContract.methods.balances(_batchOfAccounts).call();
+      const userBalanceArr = await balanceGetterContract.methods
+        .balances(_batchOfAccounts)
+        .call();
       // map health factors to accounts
       //console.log("Length: ",userBalanceArr.length);
-      const userValues = _.chunk(userBalanceArr, 14)
+      const userValues = _.chunk(userBalanceArr, 14);
       let mappedBalancesArr = [];
-      _batchOfAccounts.forEach((key, index) => mappedBalancesArr.push(`('${key}',${userValues[index].join(',')},now())`));
+      _batchOfAccounts.forEach((key, index) =>
+        mappedBalancesArr.push(
+          `('${key}',${userValues[index].join(",")},now())`
+        )
+      );
       //console.log(mappedBalancesArr);
       return mappedBalancesArr;
     } catch (err) {
-      console.log('error in get Balances For Accounts', err);
+      console.log("error in get Balances For Accounts", err);
     }
   }
 };
-const removeAccounts = async _accountsToRemove => {
-  const query = buildMultiDeleteQuery('accounts', 'address', _accountsToRemove);
-  console.log('query', query)
+const removeAccounts = async (_accountsToRemove) => {
+  const query = buildMultiDeleteQuery("accounts", "address", _accountsToRemove);
+  console.log("query", query);
   try {
     const res = await db.query(query);
-    console.log('DELETED ROWS', res.rows.length);
+    console.log("DELETED ROWS", res.rows.length);
     return { response: res, error: null };
   } catch (err) {
-    console.log('error removing accounts', err)
+    console.log("error removing accounts", err);
     return { response: null, error: err };
   }
 };
-const batchUpdateHealthFactor = async _acctHealthFactorArr => {
-  const queryValues = `${_acctHealthFactorArr.join(', ')}`;
+const batchUpdateHealthFactor = async (_acctHealthFactorArr) => {
+  const queryValues = `${_acctHealthFactorArr.join(", ")}`;
   //console.log("queryValues: ",queryValues);
-  
+
   if (queryValues.length > 0) {
     // build the query
     const query = `UPDATE user_balances b
@@ -91,8 +94,8 @@ const batchUpdateHealthFactor = async _acctHealthFactorArr => {
     try {
       await db.query(query);
     } catch (err) {
-      queryValues.forEach(row => {
-        console.log(`row: `, row)
+      queryValues.forEach((row) => {
+        console.log(`row: `, row);
       });
       throw new Error(err);
     }
@@ -104,8 +107,9 @@ const batchUpdateHealthFactor = async _acctHealthFactorArr => {
 };
 
 // main loop function
-const loopAndUpdateAccounts = async _accountsArr => {
-  if (!_accountsArr || _accountsArr.length === 0) throw new Error('Issue pulling accounts from db');
+const loopAndUpdateAccounts = async (_accountsArr) => {
+  if (!_accountsArr || _accountsArr.length === 0)
+    throw new Error("Issue pulling accounts from db");
   // loop vars
   let batchSize = 150;
   let rowLen = _accountsArr.length;
@@ -113,24 +117,28 @@ const loopAndUpdateAccounts = async _accountsArr => {
 
   // loop thru batches of accounts
   for (let batchIdx = 0; batchIdx < batchCt; batchIdx += 1) {
-    const batchOfAccounts = buildBatchOfAccounts(_accountsArr, batchSize, batchIdx);
+    const batchOfAccounts = buildBatchOfAccounts(
+      _accountsArr,
+      batchSize,
+      batchIdx
+    );
     const acctHealthFactorArr = await getBalancesForAccounts(batchOfAccounts);
     // update these new health factors on the database
     const updateRes = await batchUpdateHealthFactor(acctHealthFactorArr);
-    
-    console.log('batch count', batchIdx+1, '/', batchCt)
+
+    console.log("batch count", batchIdx + 1, "/", batchCt);
   }
-  return
+  return;
 };
 const main = async () => {
-  // query all accounts in the database (TODO: break this out 
+  // query all accounts in the database (TODO: break this out
   //     into batches so multiple scripts can update sections in parallel)
-  console.log('start')
+  console.log("start");
   try {
     const accountsArr = await getAllAccounts();
     const unusedFxnResponse = await loopAndUpdateAccounts(accountsArr);
   } catch (error) {
-    console.log('err', error)
+    console.log("err", error);
   }
 
   // i dont know how to close the db properly, dont judge
@@ -138,4 +146,3 @@ const main = async () => {
 };
 
 main();
-

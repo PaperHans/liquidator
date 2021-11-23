@@ -10,3 +10,8 @@ to run a script, go to the "scripts" section of `./package.json` and enter comma
 - This app is written in ES6+ JS and therefore needs to use ESM, loaded before any of the scripts run
 
 Currently refactoring the dbHealthUpdateListener call
+
+TODO: 
+  1. Replace web3.js with ethers.js - better documentation and typescript support
+  1. Trace out all function call paths for each module
+  1. Remove unused code

@@ -1,0 +1,40 @@
+@startuml
+
+(blockLiquidator) as bl
+(listenForNewBlocks) as lfnb
+
+node -> bl
+
+bl -> lfnb
+
+
+note top of lfnb
+  - Listens for new blocks
+  - Finds any liquidatable accounts on Aave
+  - Attemps to liquidate each account individually
+end note
+' healthy view: 
+' user address
+' collat am_xyz_eth   (dai, usdc, weth, wbtc, aave, wmatic, usdt)
+' debt   debt_xyz_eth (dai, usdc, weth, wbtc, aave, wmatic, usdt)
+' price  xyz_price    (dai, usdc, weth, wbtc, aave, wmatic, usdt)
+
+' total_collateral_eth, total_debt_eth, health_factor, amt_to_liquidate
+rectangle "listenForNewBlocks" as lfnb {
+
+  ' (newBlockHeaders) as nbh
+
+  (database) as db
+  ' which table?
+  app -> db: queries table: 'accounts'
+
+  arrOfLiquidatableAccounts as arrOfLA
+  db -> app: Arr Of Liquidatable Accounts
+
+  (liquidateSingleAccount) as lsa
+  app -> lsa: passes in liquidatableAccountObj
+  
+}
+
+
+@enduml

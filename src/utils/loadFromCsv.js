@@ -6,6 +6,7 @@ const { TABLE_USER_BALANCES } = process.env;
 let allAddedAddresses = [];
 let allAddresses = [];
 
+// DEPRECATED
 const buildMultiInsertQuery = (tableName, columnName, listOfMatches) => {
   const finalFilteredList = listOfMatches.filter(addrStr => !allAddedAddresses.includes(addrStr))
   for (let idx = 0; idx < listOfMatches.length; idx += 1) {

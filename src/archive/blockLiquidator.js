@@ -2,11 +2,16 @@
 import Web3 from "web3";
 // local imports
 import db from "./db";
-import { liquidateSingleAccount } from "./liquidateAccount";
-import { closeWeb3 } from "./utils/web3Utils";
+import { liquidateSingleAccount } from "../liquidateAccount";
+import { closeWeb3 } from "../utils/web3Utils";
 // constants
+// TODO: move into .env or .env.ts file
+const threshold_health_factor = 1.00005;
+const TABLE_VIEW_HEALTHY_ACCOUNTS = "healthy";
 const { CHAINSTACK_WSS } = process.env;
 if (!CHAINSTACK_WSS) throw "Please request .env file";
+
+// TODO: move into a params file
 const options = {
   timeout: 30000, // ms
 
@@ -38,15 +43,14 @@ const web3 = new Web3(
   new Web3.providers.WebsocketProvider(CHAINSTACK_WSS, options)
 );
 
-
-const threshold_health_factor = 1.00005;
-const TABLE_HEALTHY_ACCOUNTS = "healthy";
-
+const order = ["dai", "usdc", "weth", "wbtc", "aave", "wmatic", "usdt"];
+const itemsAm = order.map((x) => "am_" + x + "_eth");
+const itemsDebt = order.map((x) => "debt_" + x + "_eth").join(",");
 const query = `
-  SELECT * FROM ${TABLE_HEALTHY_ACCOUNTS}
+  SELECT * FROM ${TABLE_VIEW_HEALTHY_ACCOUNTS}
   WHERE health_factor <= ${threshold_health_factor} AND
   (
-    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003
+    LEAST(GREATEST(${itemsAm}),(GREATEST(${itemsDebt})/2)) >= 0.00003
   );`;
 
 /**
@@ -57,9 +61,12 @@ const query = `
  */
 const listenForNewBlocks = async () => {
   console.log(`Starting websocket\n`);
+
   web3.eth.subscribe("newBlockHeaders").on("data", async (block) => {
     console.log(`New MATIC block received. Block # ${block.number}`);
+
     try {
+      // query the database
       const { rows } = await db.query(query);
       console.log(rows.length);
       for (let idx = 0; idx < rows.length; idx += 1) {

@@ -1,11 +1,11 @@
-import db from './db';
-import _ from 'lodash';
+import db from "./db";
+import _ from "lodash";
 
 // constants
 const { TABLE_ACCOUNTS } = process.env;
 
 const addy = "0x411A27de6175B411Bfd828A46200EC070Fbf6C15";
-const lowy = addy.toLowerCase()
+const lowy = addy.toLowerCase();
 
 const query = `SELECT 
   *
@@ -20,7 +20,7 @@ const query = `SELECT
 
 // `
 // CREATE MATERIALIZED VIEW health_data_new AS
-// SELECT 
+// SELECT
 //     c.*,
 //     (
 //         ( am_dai * dai_price * 0.8 ) +
@@ -41,7 +41,7 @@ const query = `SELECT
 //         ( debt_usdt * usdt_price )
 //     ) AS total_debt_eth
 // FROM
-//     (SELECT 
+//     (SELECT
 //         w.address AS address,
 //         w.am_dai/1000000000000000000 AS am_dai,
 //         w.am_usdc/1000000 AS am_usdc,
@@ -65,7 +65,6 @@ const query = `SELECT
 //         m.wmatic/1000000000000000000 AS wmatic_price,
 //         m.usdt/1000000000000000000 AS usdt_price
 //     FROM user_balances w, price_data m ) c;`;
-
 
 //`UPDATE price_data SET usdt = 436787188263766 WHERE type = 'prices';`;
 
@@ -95,28 +94,28 @@ const query = `SELECT
 //`select * from user_balances limit 2;`;
 // const query = `CREATE TABLE user_balances (
 //   id SERIAL PRIMARY KEY,
-  // address varchar(64) UNIQUE,
-  // am_dai DECIMAL(38,0) DEFAULT 0,
-  // am_usdc DECIMAL(38,0) DEFAULT 0,
-  // am_weth DECIMAL(38,0) DEFAULT 0,
-  // am_wbtc DECIMAL(38,0) DEFAULT 0,
-  // am_aave DECIMAL(38,0) DEFAULT 0,
-  // am_wmatic DECIMAL(38,0) DEFAULT 0,
-  // am_usdt DECIMAL(38,0) DEFAULT 0,
-  // debt_dai DECIMAL(38,0) DEFAULT 0,
-  // debt_usdc DECIMAL(38,0) DEFAULT 0,
-  // debt_weth DECIMAL(38,0) DEFAULT 0,
-  // debt_wbtc DECIMAL(38,0) DEFAULT 0,
-  // debt_aave DECIMAL(38,0) DEFAULT 0,
-  // debt_wmatic DECIMAL(38,0) DEFAULT 0,
-  // debt_usdt DECIMAL(38,0) DEFAULT 0,
-  // last_updated TIMESTAMPTZ DEFAULT Now()
+// address varchar(64) UNIQUE,
+// am_dai DECIMAL(38,0) DEFAULT 0,
+// am_usdc DECIMAL(38,0) DEFAULT 0,
+// am_weth DECIMAL(38,0) DEFAULT 0,
+// am_wbtc DECIMAL(38,0) DEFAULT 0,
+// am_aave DECIMAL(38,0) DEFAULT 0,
+// am_wmatic DECIMAL(38,0) DEFAULT 0,
+// am_usdt DECIMAL(38,0) DEFAULT 0,
+// debt_dai DECIMAL(38,0) DEFAULT 0,
+// debt_usdc DECIMAL(38,0) DEFAULT 0,
+// debt_weth DECIMAL(38,0) DEFAULT 0,
+// debt_wbtc DECIMAL(38,0) DEFAULT 0,
+// debt_aave DECIMAL(38,0) DEFAULT 0,
+// debt_wmatic DECIMAL(38,0) DEFAULT 0,
+// debt_usdt DECIMAL(38,0) DEFAULT 0,
+// last_updated TIMESTAMPTZ DEFAULT Now()
 // );
 // `;
 //query = `select * from eth_Prices;`;//`UPDATE eth_Prices SET eth_price = 458650442320500, last_updated = now() WHERE asset = 'usdt';`;
 //`INSERT INTO eth_Prices (asset, eth_price, last_updated) values ('usdt',458650442320500,now());`;
-  //`select * from eth_Prices;`;
-  //query = `UPDATE ethPrices SET priceineth = 16860000000000000000 WHERE asset = 'wbtc';`;
+//`select * from eth_Prices;`;
+//query = `UPDATE ethPrices SET priceineth = 16860000000000000000 WHERE asset = 'wbtc';`;
 //const payload = priceKeys.map(item => prePayload[item]);
 //const query = `SELECT * FROM ${TABLE_ACCOUNTS} WHERE address = '${lowy}';`; //WHERE address='0x5e680B21A29Bc6C3ec18C279Bf74E759e570d722';`;
 //SELECT table_name FROM information_schema.tables WHERE table_schema='public';
@@ -127,21 +126,19 @@ const main = async () => {
   try {
     const { rows } = await db.query(query);
     console.log(rows);
-    console.log('end');
+    console.log("end");
     process.exit();
   } catch (err) {
     // console.log('ERROR IN MAIN', err);
     await db.end();
   }
-}
+};
 
 main();
 
-
-
 // `UPDATE user_balances b
-// SET   ( am_dai, am_usdc, am_weth, am_wbtc, am_aave, am_wmatic, am_usdt, debt_dai, debt_usdc, debt_weth, debt_wbtc, debt_aave, debt_wmatic, debt_usdt, last_updated ) 
-//     = ( v.am_dai, v.am_usdc, v.am_weth, v.am_wbtc, v.am_aave, v.am_wmatic, v.am_usdt, v.debt_dai, v.debt_usdc, v.debt_weth, v.debt_wbtc, v.debt_aave, v.debt_wmatic, v.debt_usdt, v.last_updated ) 
+// SET   ( am_dai, am_usdc, am_weth, am_wbtc, am_aave, am_wmatic, am_usdt, debt_dai, debt_usdc, debt_weth, debt_wbtc, debt_aave, debt_wmatic, debt_usdt, last_updated )
+//     = ( v.am_dai, v.am_usdc, v.am_weth, v.am_wbtc, v.am_aave, v.am_wmatic, v.am_usdt, v.debt_dai, v.debt_usdc, v.debt_weth, v.debt_wbtc, v.debt_aave, v.debt_wmatic, v.debt_usdt, v.last_updated )
 // FROM (
 //    VALUES
 //       ('0x1ae4643122b210943c5be1d9b18e70d56946e6ed',1,1,1,1,1,1,1,1,1,1,1,1,1,1,now()),

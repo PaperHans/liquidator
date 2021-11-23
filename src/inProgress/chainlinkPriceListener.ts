@@ -3,10 +3,10 @@ import Web3 from 'web3';
 import _ from 'lodash';
 // local imports
 import db from './db';
-import { buildInsertQuery } from './utils/psqlUtils';
-import { closeWeb3, getContracts } from './utils/web3Utils';
-import aggContracts from './abis/chainlink/agg';
-import { priceKeys } from './models/price';
+import { buildInsertQuery } from '../utils/psqlUtils';
+import { closeWeb3, getContracts } from '../utils/web3Utils';
+import aggContracts from '../abis/chainlink/agg';
+import { priceKeys } from '../models/price';
 // init
 const {
   POLY_URL1,
