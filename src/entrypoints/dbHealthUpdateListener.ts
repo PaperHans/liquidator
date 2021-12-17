@@ -4,7 +4,7 @@
 // local imports
 import { getChainLinkPrices } from "./contractReserves";
 import { pgDb } from "../db/db";
-import { liquidateSingleAccount } from "../liquidateAccount";
+import { liquidateSingleAccount } from "../liquidateSingleAccount";
 
 /** Listen on the database for health value updates
  */

@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
 
     "target": "ES2019",
-    "module": "commonjs",
+    "module": "ESNext",
     "outDir": "./build",
     "esModuleInterop": true,
     "strict": true

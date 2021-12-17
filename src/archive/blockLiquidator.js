@@ -2,7 +2,7 @@
 import Web3 from "web3";
 // local imports
 import db from "./db";
-import { liquidateSingleAccount } from "../liquidateAccount";
+import { liquidateSingleAccount } from "../liquidateSingleAccount";
 import { closeWeb3 } from "../utils/web3Utils";
 // constants
 // TODO: move into .env or .env.ts file

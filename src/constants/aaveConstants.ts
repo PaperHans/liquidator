@@ -4,7 +4,7 @@ export class TokenInfoAave {
   reward: number;
   chainlinkDecimals: number;
   aaveDecimals: number;
-  price: number;
+  price = 0;
 
   constructor(
     tokenAddress: string,
