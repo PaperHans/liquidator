@@ -2,24 +2,11 @@
   "name": "liquidation-engine",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./src/index.ts",
   "scripts": {
-    "listen": "node index.js chainlinkPriceListener",
-    "reserves": "node index.js contractReserves",
-    "singleLoop": "node index.js liquidateAccount",
-    "loop": "python3 src/looper.py",
-    "analyze-events": "node index.js eventAnalyzer",
-    "query": "node index.js testQuery",
-    "chainAdder": "node index.js chainLinkAdder",
-    "liquidations": "node index.js liquidationListener",
-    "updateBalances": "node index.js updateUserBalances",
-    "updateHealthFactorsTop": "node index.js updateHealthFactorsTop",
-    "updateHealthFactorsBottom": "node index.js updateHealthFactorsBottom",
-    "loopHealthTop": "python3 src/looperHealthTop.py",
-    "loopHealthBottom": "python3 src/looperHealthBottom.py",
-    "loadFromCsv": "node index.js src/utils/loadFromCsv",
-    "healthListen": "node index.js dbHealthUpdateListener",
-    "blockLiquidator": "node index.js blockLiquidator"
+    "updateHealth": "ts-node index.ts updateHealth",
+    "liquidate:single": "ts-node index.ts liquidateAccounts earlyExit",
+    "liquidate": "ts-node index.ts liquidateAccounts"
   },
   "author": "",
   "license": "ISC",
@@ -28,23 +15,21 @@
     "@aave/protocol-v2": "^1.0.1",
     "@openzeppelin/contract-loader": "^0.6.2",
     "@truffle/hdwallet-provider": "^1.4.1",
+    "@types/node": "^18.11.16",
     "bignumber.js": "^9.0.1",
-    "csv-parse": "^4.16.0",
     "dotenv": "^9.0.0",
-    "esm": "^3.2.25",
     "ethers": "^5.3.1",
     "lodash": "^4.17.21",
     "node-fetch": "^2.6.1",
     "pg": "^8.6.0",
     "pg-listen": "^1.7.0",
-    "web3": "^1.3.5",
-    "web3-providers-ws": "^1.4.0"
+    "typescript": "^4.9.4"
   },
   "devDependencies": {
-    "@types/node": "^18.11.9",
     "@types/lodash": "^4.14.189",
     "@types/pg": "^8.6.5",
     "@types/web3": "^1.2.2",
-    "typescript": "^4.9.3"
+    "ts-node": "^10.9.1",
+    "tsc": "^2.0.4"
   }
 }
