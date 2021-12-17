@@ -3,7 +3,6 @@
  */
 
 // modules
-// import Web3 from "web3";
 import HDWalletProvider from "@truffle/hdwallet-provider";
 import _ from "lodash";
 // local
@@ -22,7 +21,7 @@ const {
   // CHAINSTACK_WSS,
 } = process.env;
 
-let provider = new HDWalletProvider({
+const provider = new HDWalletProvider({
   mnemonic: { phrase: WEB3_MNEMONIC! },
   providerOrUrl: CHAINSTACK_HTTPS!,
 });
@@ -34,12 +33,15 @@ const flashAndLiquidateContract = getContract(
   flashAndLiquidateAddress
 );
 
-/** Liquidate a Single Account
+/** # Liquidate a Single Account
  * Takes in an account object and logs the response (success/fail)
  * @param _accountObj
- * @returns
+ *
+ * @todo remove `any` from params
  */
-export const liquidateSingleAccount = async (_accountObj): Promise<void> => {
+export const liquidateSingleAccount = async (
+  _accountObj: any
+): Promise<void> => {
   // TODO: make sure other scripts that call liquidate-Single-Account dont pass in token info
   // const accountWithReserveData = await getReservesForAccount(_accountObj, _tokenInfo);
   // const updatedAcct = rankByEthAmt(accountWithReserveData);
