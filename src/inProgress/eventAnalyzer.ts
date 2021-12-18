@@ -5,7 +5,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import {
   address as aaveLendingPoolAddress,
   abi as aaveLendingPoolAbi,
-} from "../abis/aave/general/aaveLendingPool";
+} from "../contracts/abi/aaveLendingPool";
 import { multiInsertQuery } from "../utils/psqlUtils";
 import db from "./db";
 // constants

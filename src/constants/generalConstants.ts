@@ -49,3 +49,5 @@ tokenOrder.forEach((tokenName: TokenStrings) => {
 
   tokenMap.set(tokenName, { ...prevTokenInfo, aave: tokenInfoAave });
 });
+
+export const healthFactorThreshold = 1.00005

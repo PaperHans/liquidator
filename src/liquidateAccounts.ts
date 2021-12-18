@@ -7,6 +7,7 @@ import { liquidateSingleAccount } from "./liquidateSingleAccount";
 import { createWsConnInfo } from "./params/liquidateAccountsParams";
 import { initProvider } from "./utils/web3Utils";
 import { logError, logLiquidation } from "./logging/logFxns";
+import { liquidatableAcctsQuery } from "./db/buildQueryStrings";
 
 /** TODOs
  * - identify and abstract out constants
@@ -40,13 +41,6 @@ const provider: JsonRpcProvider = initProvider(
   createWsConnInfo(CHAINSTACK_WSS)
 );
 
-const queryLiquidatableAccounts = `
-  SELECT * FROM healthy
-  WHERE health_factor <= 1.00005 AND
-  (
-    LEAST(GREATEST(am_dai_eth,am_usdc_eth,am_weth_eth,am_wbtc_eth,am_aave_eth,am_wmatic_eth,am_usdt_eth),(GREATEST(debt_dai_eth,debt_usdc_eth,debt_weth_eth,debt_wbtc_eth,debt_aave_eth,debt_wmatic_eth,debt_usdt_eth)/2)) >= 0.00003
-  );`;
-
 /** Retrieve an array accounts that are 'liquidatable'
  * Query database table view
  *
@@ -55,12 +49,10 @@ const queryLiquidatableAccounts = `
  *
  * @param query
  */
-const getLiquidatableAccounts = async (
-  query: string
-): Promise<LiquidatableAccount[]> => {
+const getLiquidatableAccounts = async (): Promise<LiquidatableAccount[]> => {
   try {
-    const { rows: liquidatableAccounts } = await db.query(query);
-    return liquidatableAccounts;
+    const { rows: liquidatableAccts } = await db.query(liquidatableAcctsQuery);
+    return liquidatableAccts;
   } catch (err) {
     throw err;
   }
@@ -73,9 +65,7 @@ const getLiquidatableAccounts = async (
  */
 const processBlock: Listener = async (_blockNumber: number) => {
   // query db to get liquidatable accounts
-  const liquidatableAccounts = await getLiquidatableAccounts(
-    queryLiquidatableAccounts
-  );
+  const liquidatableAccounts = await getLiquidatableAccounts();
 
   // iterate through arr and call 'liquidate' function
   liquidatableAccounts.forEach(async (acct: LiquidatableAccount) => {

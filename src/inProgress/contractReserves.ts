@@ -18,7 +18,7 @@ import {
 } from "../abis/custom/chainAbiPrices";
 import { tokenInfo } from "../constants/aaveConstants";
 import { Provider } from "@truffle/hdwallet-provider/dist/constructor/types";
-import { aaveDataProviderAddr } from "../abis/aave/general/aaveDataProvider";
+import { aaveDataProviderAddr } from "../contracts/abi/aave/aaveDataProvider";
 // constants
 const tokenOrder = ["dai", "usdc", "weth", "wbtc", "aave", "wmatic", "usdt"];
 const priceAddressesArr = tokenOrder.map(

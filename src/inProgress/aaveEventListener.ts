@@ -9,7 +9,7 @@ import aggContracts from "../abis/chainlink/agg";
 import {
   address as aaveLendingPoolAddress,
   abi as aaveLendingPoolAbi,
-} from "../abis/aave/general/aaveLendingPool";
+} from "../contracts/abi/aaveLendingPool";
 // init
 const { POLY_URL3, TABLE_ACCOUNTS } = process.env;
 if (!POLY_URL3) throw "Please request .env file";

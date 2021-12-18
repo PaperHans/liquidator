@@ -5,15 +5,15 @@ import BigNumber from 'bignumber.js';
 import {
   abi as aaveLendingPoolAbi,
   address as aaveLendingPoolAddress,
-} from '../abis/aave/general/aaveLendingPool';
+} from '../contracts/abi/aaveLendingPool';
 import {
   abi as aaveDataProviderAbi,
   address as aaveDataProviderAddress,
-} from '../abis/aave/general/aaveDataProvider';
+} from '../contracts/abi/aave/aaveDataProvider';
 import {
   abi as aavePriceOracleAbi,
   address as aavePriceOracleAddress,
-} from '../abis/aave/general/aavePriceOracle';
+} from '../contracts/abi/aavePriceOracle';
 import { tokenInfo } from './constants/reservesMainnet';
 import { getContract } from '../utils/web3Utils';
 // constants

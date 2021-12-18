@@ -16,6 +16,7 @@ import {
 import { Provider } from "./utils/web3Utils";
 import { logLiquidation } from "./logging/logFxns";
 import { TokenInfo } from "./types/general";
+import { tokenInfo } from "./constants/aaveConstants";
 
 const getDbAssetKeys = (baseTokenName: string, tokenName: string) => ({
   collat: `am_${tokenName}_${baseTokenName}`,
@@ -133,7 +134,7 @@ class AcctTotals {
  * acctObj -> liquidatableAccount
  */
 const sortAssetValuePerAcct = (
-  liquidatableAccount: LiquidatableAccount
+  liquidatableAcct: LiquidatableAccount
 ): AcctTokenMax => {
   let acctTotals = new AcctTotals();
   let acctTokenMax = { debt: { val: 0 } } as AcctTokenMax;
@@ -143,7 +144,7 @@ const sortAssetValuePerAcct = (
     const acctTokenIter = new AcctTokenInfo(
       baseTokenName,
       tokenName,
-      liquidatableAccount,
+      liquidatableAcct,
       tokenInfo
     );
 
@@ -161,7 +162,8 @@ const sortAssetValuePerAcct = (
   });
 
   acctTokenMax.addTotals(acctTotals);
-  liquidatableAccount.values.am_usdt_eth = 0;
+  // at the time, aave did not allow users to liquidate tether collateral
+  liquidatableAcct.values.am_usdt_eth = 0;
 
   return acctTokenMax;
 };
@@ -189,17 +191,15 @@ export const liquidateSingleAccount = async (
   const reserveAddress = updatedAcct.debt.info.aave.tokenAddress;
   const addressToLiquidate = liquidatableAcct.address;
 
-  // skips the bad pair of AAVE/wBTC
-  // TODO: get these values from single source variable
+  // there is/was an arbitrary limitation with AAVE/wBTC pair
   if (
-    (collateralAddress === "0xD6DF932A45C0f255f85145f286eA0b292B21C90B" &&
-      reserveAddress === "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6") ||
-    (reserveAddress === "0xD6DF932A45C0f255f85145f286eA0b292B21C90B" &&
-      collateralAddress === "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6")
+    (collateralAddress === tokenInfo.aave.tokenAddress &&
+      reserveAddress === tokenInfo.wbtc.tokenAddress) ||
+    (reserveAddress === tokenInfo.aave.tokenAddress &&
+      collateralAddress === tokenInfo.wbtc.tokenAddress)
   ) {
-    throw Error(
-      `bad token pair: collat: ${collateralAddress}  res: ${reserveAddress}`
-    );
+    const errMsg = `Cannot use the pairing: collat=${collateralAddress}  res=${reserveAddress}`;
+    throw Error(errMsg);
   }
 
   try {

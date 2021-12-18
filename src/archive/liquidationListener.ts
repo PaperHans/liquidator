@@ -4,7 +4,7 @@ import { closeWeb3, getContract } from "../utils/web3Utils";
 import {
   address as aaveLendingPoolAddress,
   abi as aaveLendingPoolAbi,
-} from "../abis/aave/general/aaveLendingPool";
+} from "../contracts/abi/aaveLendingPool";
 
 // init
 const { CHAINSTACK_WSS } = process.env;
