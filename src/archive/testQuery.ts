@@ -7,6 +7,7 @@ const { TABLE_ACCOUNTS } = process.env;
 const addy = "0x411A27de6175B411Bfd828A46200EC070Fbf6C15";
 const lowy = addy.toLowerCase();
 
+// this is refactored
 const query = `SELECT 
   *
   FROM healthy

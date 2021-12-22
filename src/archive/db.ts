@@ -43,6 +43,8 @@ class PostgresObj {
     await this.client.off();
   }
 }
+/** @deprecated */
 export const pgDb = new PostgresObj();
 pgDb.init();
+/** @deprecated */
 export default pgDb.client;

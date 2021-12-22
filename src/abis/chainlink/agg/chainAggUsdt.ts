@@ -1,6 +1,8 @@
-export const address = '0xa0Ea34dF1edef56d8E1A8479f7CC2ce70D5dffb5';
+/** @deprecated */
+export const address = '0xEb3F14F6D3d8f541bA597dBB92A5bFF284a05D45';
+/** @deprecated */
 export const abi = {
-    "chainAggUsdc": [
+    "chainAggUsdt": [
         {
             "inputs": [
                 {

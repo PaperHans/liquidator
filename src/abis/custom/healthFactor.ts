@@ -1,5 +1,6 @@
+/** @deprecated */
 export const address = '0x85Ddada2E76Db3B0A89073743422B220584c35D4';
-
+/** @deprecated */
 export const abi = [
   {
     "payable": true,

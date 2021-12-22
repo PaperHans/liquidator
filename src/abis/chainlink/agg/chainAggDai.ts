@@ -1,4 +1,6 @@
+/** @deprecated */
 export const address = '0xd8FcAf8BeF7d9abf5cfCC91806b3048681ee5Eb4';
+/** @deprecated */
 export const abi = {
   "chainAggDai": [
     {

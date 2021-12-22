@@ -10,4 +10,5 @@ const filename = process.argv[2];
 const filePath = `./src/${filename}`;
 require("dotenv").config();
 // export
-module.exports = require(filePath);
+/** @deprecated */
+export default require(filePath);

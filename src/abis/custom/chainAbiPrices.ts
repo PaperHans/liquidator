@@ -1,4 +1,6 @@
+/** @deprecated */
 export const address = '0x1A56342761f8fec1f9D5B994D05F1813b3621454';
+/** @deprecated */
 export const abi = [
   {
     "constant": true,

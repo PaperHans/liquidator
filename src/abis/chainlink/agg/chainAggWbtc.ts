@@ -1,6 +1,8 @@
-export const address = '0x058115BeFC3621816EE7a69E651015E45F6e67da';
+/** @deprecated */
+export const address = '0xd83D9151f491a25Aa9901428f598555f2F235d7c';
+/** @deprecated */
 export const abi = {
-    "chainAggWmatic": [
+    "chainAggWbtc": [
         {
             "inputs": [
                 {
@@ -875,7 +877,7 @@ export const abi = {
             "name": "owner",
             "outputs": [
                 {
-                    "internalType": "address",
+                    "internalType": "address payable",
                     "name": "",
                     "type": "address"
                 }
@@ -1160,4 +1162,4 @@ export const abi = {
             "type": "function"
         }
     ]
-};
+}

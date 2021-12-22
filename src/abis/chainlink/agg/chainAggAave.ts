@@ -1,4 +1,6 @@
+/** @deprecated */
 export const address = '0x3DE262d27aD7f03522cD1d2d1a3B4c9A90ca4071';
+/** @deprecated */
 export const abi = {
     "chainAggAave": [
         {

@@ -1,4 +1,6 @@
+/** @deprecated */
 export const address = '0x46B6d82c4Daa996d9F42D9a8f196E714212D4610';
+/** @deprecated */
 export const abi = [
 	{
 		"inputs": [
