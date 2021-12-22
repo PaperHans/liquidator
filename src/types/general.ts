@@ -1,7 +1,8 @@
+// TODO: move to `liquidation` dir
+// TODO: change name to SupportedTokens
 export type TokenMap = Map<string, TokenInfo>;
 
-/**
- * Platform info for Aave
+/** Platform info for Aave
  */
 export interface AaveInfo {
   tokenAddress: string;
@@ -12,6 +13,11 @@ export interface AaveInfo {
 }
 export interface ChainlinkInfo {}
 export interface AppInfo {}
+
+/** Platform-specific information regarding a single token
+ *
+ * @todo Please add more clarity to this definition
+ */
 export interface TokenInfo {
   aave: AaveInfo;
   chainlink: ChainlinkInfo;

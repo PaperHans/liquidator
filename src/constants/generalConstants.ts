@@ -1,4 +1,10 @@
-import { AaveInfo, AppInfo, ChainlinkInfo, TokenInfo, TokenMap } from "../types/general";
+import {
+  AaveInfo,
+  AppInfo,
+  ChainlinkInfo,
+  TokenInfo,
+  TokenMap,
+} from "../types/general";
 import { tokenInfo } from "./aaveConstants";
 
 export type TokenStrings =
@@ -11,6 +17,7 @@ export type TokenStrings =
   | "wmatic"
   | "usdt";
 
+// TODO: change to supported token order
 export const tokenOrder = [
   "dai",
   "usdc",
@@ -28,6 +35,8 @@ export const baseTokenName = "eth";
  */
 export const receiveATokens = false;
 
+// TODO: change name to SupportedTokens
+// TODO: move to `liquidation` dir
 export const tokenMap: TokenMap = new Map(
   tokenOrder.map((tokenName) => {
     return [
@@ -41,6 +50,8 @@ export const tokenMap: TokenMap = new Map(
   })
 );
 
+// TODO: move to `liquidation` dir
+// TODO: change name to supportedTokens
 tokenOrder.forEach((tokenName: TokenStrings) => {
   // get this token's info for the aave platform
   // @ts-ignore
@@ -50,4 +61,4 @@ tokenOrder.forEach((tokenName: TokenStrings) => {
   tokenMap.set(tokenName, { ...prevTokenInfo, aave: tokenInfoAave });
 });
 
-export const healthFactorThreshold = 1.00005
+export const healthFactorThreshold = 1.00005;

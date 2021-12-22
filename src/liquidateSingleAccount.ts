@@ -18,34 +18,46 @@ import { logLiquidation } from "./logging/logFxns";
 import { TokenInfo } from "./types/general";
 import { tokenInfo } from "./constants/aaveConstants";
 
-const getDbAssetKeys = (baseTokenName: string, tokenName: string) => ({
-  collat: `am_${tokenName}_${baseTokenName}`,
-  debt: `debt_${tokenName}_${baseTokenName}`,
-  price: `${tokenName}_price`,
+/** Get the database asset keys
+ *
+ * @param tokenSymbol an asset's shortname/ticker (i.e. `matic` is the **symbol** for Polygon)
+ */
+const getDbAssetKeys = (tokenSymbol: string) => ({
+  collat: `am_${tokenSymbol}_${baseTokenName}`,
+  debt: `debt_${tokenSymbol}_${baseTokenName}`,
+  price: `${tokenSymbol}_price`,
 });
 
-/** Holds information regarding a single token held by a liquidatable account
+/** Holds information regarding a single asset/token held on the Aave platform by a liquidatable account.
  *
+ * Tokens that sit on Aave exist in two forms, **collateral** (`am` tokens) and **debt**.
+ *
+ * An account can hold different amounts of this token in collat and/or debt at the same time.
  */
-class AcctTokenInfo {
-  [index: string]: any;
-  name: string;
-  baseTokenName: string;
+class AcctAssetInfo {
+  // [index: string]: any;
+  /** An asset's short name/ticker (i.e. `matic` is the *symbol* for Polygon) */
+  symbol: string;
+  /** Collateral token held by the user.
+   * `Value`: the amount denominated in base currency (eth or matic)
+   * `key`: the token's lookup key as represented in the database `am_<token>_<eth/matic>`*/
   collat: { val: number; key: string; amt: number };
+  /** Debt token held by the user.
+   * `Value`: the amount denominated in base currency (eth or matic)
+   * `key`: the token's lookup key as represented in the database `am_<token>_<eth/matic>`*/
   debt: { val: number; key: string; amt: number };
+  /** The market price for this token. Denominated in 'base' units (eth or matic) */
   price: { val: number; key: string };
   info: TokenInfo;
 
   constructor(
-    baseTokenName: string,
     tokenName: string,
     liquidatableAccount: LiquidatableAccount,
     tokenInfo: TokenInfo
   ) {
-    this.name = tokenName;
-    this.baseTokenName = baseTokenName;
+    this.symbol = tokenName;
     this.info = tokenInfo;
-    const assetKeys = getDbAssetKeys(this.baseTokenName, this.name);
+    const assetKeys = getDbAssetKeys(this.symbol);
     this.price = {
       val: liquidatableAccount[assetKeys.price],
       key: assetKeys.price,
@@ -62,46 +74,47 @@ class AcctTokenInfo {
     };
   }
 }
+
+/** Token-specific information about the asset of highest value, held by a single account.
+ */
 type MaxInfo = {
   val: number;
   key: string;
   amt: number;
   price: number;
   info: TokenInfo;
-  name: string;
+  symbol: string;
 };
+
+/** The asset of highest value, held by a single account.
+ */
 class AcctTokenMax {
   [index: string]: any;
-  baseTokenName: string;
   acctTotals: AcctTotals;
   collat: MaxInfo;
   debt: MaxInfo;
 
-  constructor(
-    baseTokenName: string,
-    collat: MaxInfo,
-    debt: MaxInfo,
-    acctTotals: AcctTotals
-  ) {
-    this.baseTokenName = baseTokenName;
+  constructor(collat: MaxInfo, debt: MaxInfo, acctTotals: AcctTotals) {
     this.collat = collat;
     this.debt = debt;
     this.acctTotals = acctTotals;
   }
 
-  updateToken(input: AcctTokenInfo, key: string) {
-    (this[key] as MaxInfo).amt = input[key].amt;
-    (this[key] as MaxInfo).key = input[key].key;
-    (this[key] as MaxInfo).val = input[key].val;
-    (this[key] as MaxInfo).price = input.price.val;
-    (this[key] as MaxInfo).name = input.name;
-    (this[key] as MaxInfo).info = input.info;
+  updateDebt(input: AcctAssetInfo) {
+    this.debt.amt = input.debt.amt;
+    this.debt.key = input.debt.key;
+    this.debt.val = input.debt.val;
+    this.debt.price = input.price.val;
+    this.debt.symbol = input.symbol;
+    this.debt.info = input.info;
   }
-  updateDebt(input: AcctTokenInfo) {
-    this.updateToken(input, "debt");
-  }
-  updateCollat(input: AcctTokenInfo) {
-    this.updateToken(input, "collat");
+  updateCollat(input: AcctAssetInfo) {
+    this.collat.amt = input.collat.amt;
+    this.collat.key = input.collat.key;
+    this.collat.val = input.collat.val;
+    this.collat.price = input.price.val;
+    this.collat.symbol = input.symbol;
+    this.collat.info = input.info;
   }
   addTotals(input: AcctTotals) {
     this.acctTotals = input;
@@ -140,27 +153,25 @@ const sortAssetValuePerAcct = (
   let acctTokenMax = { debt: { val: 0 } } as AcctTokenMax;
 
   // get the values in a base token (eth -> matic), returned from the postgres view-table
+  // TODO: change name to SupportedTokens
   tokenMap.forEach((tokenInfo: TokenInfo, tokenName: string) => {
-    const acctTokenIter = new AcctTokenInfo(
-      baseTokenName,
-      tokenName,
-      liquidatableAcct,
-      tokenInfo
-    );
+    // information about a single asset, owned by a single account
+    const acctToken = new AcctAssetInfo(tokenName, liquidatableAcct, tokenInfo);
 
     // get the highest debt token value and address
-    if (acctTokenIter.debt.val > acctTokenMax.debt.val) {
-      acctTokenMax.updateDebt(acctTokenIter);
+    if (acctToken.debt.val > acctTokenMax.debt.val) {
+      acctTokenMax.updateDebt(acctToken);
     }
     // get the highest collateral token value and address
-    if (acctTokenIter.collat.val > acctTokenMax.collat.val) {
-      acctTokenMax.updateCollat(acctTokenIter);
+    if (acctToken.collat.val > acctTokenMax.collat.val) {
+      acctTokenMax.updateCollat(acctToken);
     }
 
-    acctTotals.totalDebtVal += acctTokenIter.debt.val;
-    acctTotals.totalCollatVal += acctTokenIter.collat.val;
+    acctTotals.totalDebtVal += acctToken.debt.val;
+    acctTotals.totalCollatVal += acctToken.collat.val;
   });
 
+  // put the totals in the
   acctTokenMax.addTotals(acctTotals);
   // at the time, aave did not allow users to liquidate tether collateral
   liquidatableAcct.values.am_usdt_eth = 0;
@@ -221,40 +232,27 @@ export const liquidateSingleAccount = async (
     const debtToCoverInMaticProfit = debtValToCoverMatic * collatBonus;
 
     // get the estimated gas
-    let gasPriceGwei: number = 0;
     const adjGasAmt = estGasAmt.mul(BigNumber.from(0.9));
     const gasPrice = await getGasPrice();
 
-    if (
-      debtToCoverInMaticProfit >= 500000000000000000 &&
-      debtToCoverInMaticProfit <= 50000000000000000000
-    ) {
-      gasPriceGwei = gasPrice.fast * 4;
-    }
-    if (
-      debtToCoverInMaticProfit > 50000000000000000000 &&
-      debtToCoverInMaticProfit <= 100000000000000000000
-    ) {
-      gasPriceGwei = gasPrice.fastest * 100;
-    }
-    if (debtToCoverInMaticProfit > 100000000000000000000) {
-      gasPriceGwei = gasPrice.fastest * 200;
-    }
-    if (debtToCoverInMaticProfit < 500000000000000000) {
-      gasPriceGwei = gasPrice.standard + 5;
-    }
+    const gasPriceGwei: number = (() => {
+      if (debtToCoverInMaticProfit > 1e20) return gasPrice.fastest * 200;
+      else if (debtToCoverInMaticProfit > 5e19) return gasPrice.fastest * 100;
+      else if (debtToCoverInMaticProfit > 5e17) return gasPrice.fast * 4;
+      else return gasPrice.standard + 5;
+    })();
 
-    const gasPriceInWei = 1000000000 * gasPriceGwei;
-    const estTxnCost = adjGasAmt.mul(gasPriceInWei);
+    const gasPriceWei = 1e9 * gasPriceGwei;
+    const estTxnCost = adjGasAmt.mul(gasPriceWei);
 
     if (BigNumber.from(debtToCoverInMaticProfit).gt(estTxnCost)) {
       const gasLimit = Math.round(adjGasAmt.mul(1.1).toNumber());
-      const gasPriceMax = 20000000000000;
+      const gasPriceMax = 2e13;
 
       // create function for send transaction
       const txnCount = await provider.getSigner().getTransactionCount();
       const overrides = {
-        gasPrice: Math.min(gasPriceInWei, gasPriceMax),
+        gasPrice: Math.min(gasPriceWei, gasPriceMax),
         gasLimit,
         nonce: txnCount,
       };
